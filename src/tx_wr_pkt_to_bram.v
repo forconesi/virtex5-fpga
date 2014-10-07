@@ -230,6 +230,54 @@ module tx_wr_pkt_to_bram (
     reg     [9:0]   look_ahead_wr_addr_p1;
     reg     [3:0]   data_ready;
 
+    //-------------------------------------------------------
+    // Local health_mon
+    //-------------------------------------------------------
+    reg     [14:0]  health_mon_fsm;
+    reg     [9:0]   diff_mon_reg;
+    (* KEEP = "TRUE" *)reg     [31:0]   counter_mon;
+
+    ////////////////////////////////////////////////
+    // health_mon
+    ////////////////////////////////////////////////
+    always @( posedge trn_clk or negedge reset_n ) begin
+
+        if (!reset_n ) begin  // reset
+            counter_mon <= 'b0;
+            health_mon_fsm <= s0;
+        end
+        
+        else begin  // not reset
+
+            case (health_mon_fsm)
+
+                s0 : begin
+                    diff_mon_reg <= diff;
+                    counter_mon <= 'b0;
+                    if (diff) begin
+                        health_mon_fsm <= s1;
+                    end
+                end
+
+                s1 : begin
+                    counter_mon <= counter_mon + 1;
+                    if (diff != diff_mon_reg) begin
+                        diff_mon_reg <= diff;
+                        counter_mon <= 'b0;
+                    end
+                    if (!diff) begin
+                        health_mon_fsm <= s0;
+                    end
+                end
+
+                default : begin
+                    health_mon_fsm <= s0;
+                end
+
+            endcase
+        end     // not reset
+    end  //always
+
     assign reset_n = ~trn_lnk_up_n;
 
     ////////////////////////////////////////////////
