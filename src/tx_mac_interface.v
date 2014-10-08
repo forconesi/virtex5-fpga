@@ -83,6 +83,14 @@ module tx_mac_interface (
     //-------------------------------------------------------
     // Local trigger_eth_frame
     //-------------------------------------------------------
+    reg     [7:0]     sequence_fsm;
+    (* KEEP = "TRUE" *)reg               stoppp;
+    reg     [31:0]    seq_numb;
+    reg     [31:0]    seq_numb_prev;
+
+    //-------------------------------------------------------
+    // Local trigger_eth_frame
+    //-------------------------------------------------------
     reg     [7:0]     trigger_frame_fsm;
     reg     [31:0]    byte_counter;
     reg     [9:0]     qwords_in_eth;
@@ -332,6 +340,68 @@ module tx_mac_interface (
 
             endcase
 
+        end     // not reset
+    end  //always
+
+
+
+    ////////////////////////////////////////////////
+    // sequence_check
+    ////////////////////////////////////////////////
+    always @( posedge clk or negedge reset_n ) begin
+
+        if (!reset_n ) begin  // reset
+            stoppp <= 1'b0;
+            seq_numb <= 'b0;
+            seq_numb_prev <= 'b0;
+            sequence_fsm <= s1;
+        end
+        
+        else begin  // not reset
+
+            case (sequence_fsm)
+
+                s1 : begin
+                    if (tx_ack) begin
+                        sequence_fsm <= s2;
+                    end
+                end
+
+                s2 : begin
+                    sequence_fsm <= s3;
+                end
+
+                s3 : begin
+                    seq_numb_prev <= seq_numb;
+                    sequence_fsm <= s4;
+                end
+
+                s4 : begin
+                    seq_numb[31:24] <= rd_data[55:48];
+                    seq_numb[23:16] <= rd_data[63:56];
+                    sequence_fsm <= s5;
+                end
+
+                s5 : begin
+                    seq_numb[15:8] <= rd_data[7:0];
+                    seq_numb[7:0] <= rd_data[15:8];
+                    sequence_fsm <= s6;
+                end
+
+                s6 : begin
+                    if (seq_numb <= seq_numb_prev) begin
+                        stoppp <= 1'b1;
+                    end
+                    else begin
+                        sequence_fsm <= s1;
+                    end
+                end
+
+                default : begin 
+                    sequence_fsm <= s1;
+                end
+
+            endcase
         end     // not reset
     end  //always
 
