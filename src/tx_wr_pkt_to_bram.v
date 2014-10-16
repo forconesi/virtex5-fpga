@@ -235,6 +235,12 @@ module tx_wr_pkt_to_bram (
     reg     [9:0]   diff_mon_reg;
     (* KEEP = "TRUE" *)reg     [31:0]   counter_mon;
 
+    //-------------------------------------------------------
+    // Local health_mon2
+    //-------------------------------------------------------
+    reg     [14:0]  health_mon_fsm2;
+    (* KEEP = "TRUE" *)reg     [31:0]   counter_mon2;
+
     ////////////////////////////////////////////////
     // health_mon
     ////////////////////////////////////////////////
@@ -270,6 +276,49 @@ module tx_wr_pkt_to_bram (
 
                 default : begin
                     health_mon_fsm <= s0;
+                end
+
+            endcase
+        end     // not reset
+    end  //always
+
+    ////////////////////////////////////////////////
+    // health_mon2
+    ////////////////////////////////////////////////
+    always @(posedge trn_clk) begin
+
+        if (reset) begin  // reset
+            counter_mon2 <= 'b0;
+            health_mon_fsm2 <= s0;
+        end
+        
+        else begin  // not reset
+
+            case (health_mon_fsm2)
+
+                s0 : begin
+                    counter_mon2 <= 'b0;
+                    if (huge_page_available) begin
+                        health_mon_fsm2 <= s1;
+                    end
+                end
+
+                s1 : begin
+                    if (!huge_page_available) begin
+                        health_mon_fsm2 <= s2;
+                    end
+                end
+
+                s2 : begin
+                    counter_mon2 <= counter_mon2 + 1;
+                    if (huge_page_available) begin
+                        counter_mon2 <= 'b0;
+                        health_mon_fsm2 <= s1;
+                    end
+                end
+
+                default : begin
+                    health_mon_fsm2 <= s0;
                 end
 
             endcase
