@@ -126,6 +126,7 @@ module tx_rd_host_mem (
     reg     [3:0]   next_tlp_tag;
     reg             aux0_high_mem;
     reg             aux1_high_mem;
+    reg     [3:0]   dw_en;
 
     ////////////////////////////////////////////////
     // read request TLP generation to huge_page
@@ -166,6 +167,22 @@ module tx_rd_host_mem (
                     last_completed_buffer_address <= completed_buffer_address + 4'b1000;
                     driving_interface <= 1'b0;
                     host_mem_addr <= huge_page_addr;
+
+                    case (huge_page_addr[1:0])                    // my deco
+                        2'b00 : begin
+                            dw_en <= 4'b1111;
+                        end
+                        2'b01 : begin
+                            dw_en <= 4'b1110;
+                        end
+                        2'b10 : begin
+                            dw_en <= 4'b1100;
+                        end
+                        2'b11 : begin
+                            dw_en <= 4'b1000;
+                        end
+                    endcase
+
                     aux0_high_mem <= | huge_page_addr[63:32];
                     aux1_high_mem <= | completed_buffer_address[63:32];
                     notification_message_reg <= notification_message;
@@ -211,7 +228,7 @@ module tx_rd_host_mem (
                                 cfg_completer_id,   //Requester ID
                                 {4'b0, tlp_tag },   //Tag
                                 4'hF,   //last DW byte enable
-                                4'hF    //1st DW byte enable
+                                dw_en    //1st DW byte enable
                             };
                     trn_tsof_n <= 1'b0;
                     trn_tsrc_rdy_n <= 1'b0;
@@ -230,7 +247,7 @@ module tx_rd_host_mem (
                     if (!trn_tdst_rdy_n) begin
                         trn_tsof_n <= 1'b1;
                         trn_teof_n <= 1'b0;
-                        trn_td <= host_mem_addr;
+                        trn_td <= {host_mem_addr[63:2], 2'b00};
                         rd_host_fsm <= s4;
                     end
                 end
@@ -239,7 +256,7 @@ module tx_rd_host_mem (
                     if (!trn_tdst_rdy_n) begin
                         trn_tsof_n <= 1'b1;
                         trn_teof_n <= 1'b0;
-                        trn_td[63:32] <= host_mem_addr[31:0];
+                        trn_td[63:32] <= {host_mem_addr[31:2], 2'b00};
                         rd_host_fsm <= s4;
                     end
                 end
