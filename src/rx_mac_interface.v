@@ -89,6 +89,9 @@ module rx_mac_interface (
     reg     [`BF:0]   aux_wr_addr;
     reg     [`BF:0]   diff;
     /*(* KEEP = "TRUE" *)*/reg     [31:0]   dropped_frames_counter;
+    reg     [15:0]    aux_w;
+    reg     [15:0]    last_aux_w;
+    reg     [`BF:0]   commited_wr_addr_i;
     
     reg     [7:0]    rx_data_valid_reg;
     reg              rx_good_frame_reg;
@@ -131,6 +134,7 @@ module rx_mac_interface (
 
         if (reset) begin  // reset
             commited_wr_addr <= 'b0;
+            commited_wr_addr_i <= 'b0;
             dropped_frames_counter <= 'b0;
             wr_en <= 1'b1;
             rx_activity <= 1'b0;
@@ -147,14 +151,15 @@ module rx_mac_interface (
 
                 s0 : begin                                  // configure mac core to present preamble and save the packet timestamp while its reception
                     byte_counter <= 'b0;
-                    aux_wr_addr <= commited_wr_addr +1;
+                    aux_wr_addr <= commited_wr_addr_i +1;
                     if (rx_data_valid) begin      // wait for sof (preamble)
                         rx_fsm <= s1;
                     end
                 end
 
                 s1 : begin
-                    wr_data <= rx_data;
+                    wr_data <= {rx_data[47:0], aux_w};
+                    aux_w <= rx_data[63:48];
                     wr_addr <= aux_wr_addr;
                     aux_wr_addr <= aux_wr_addr +1;
                     rx_activity <= 1'b1;
@@ -195,7 +200,7 @@ module rx_mac_interface (
                     endcase
 
                     if (diff > `MAX_DIFF) begin         // buffer is more than 90%
-                        rx_fsm <= s3;
+                        rx_fsm <= s4;
                     end
                     else if (rx_good_frame) begin        // eof (good frame)
                         rx_fsm <= s2;
@@ -206,13 +211,39 @@ module rx_mac_interface (
                 end
 
                 s2 : begin
-                    wr_data <= {byte_counter, 32'b0};
-                    wr_addr <= commited_wr_addr;
+                    wr_data <= {byte_counter, 16'b0, last_aux_w};
+                    wr_addr <= commited_wr_addr_i;
                     rx_activity <= 1'b1;
 
-                    commited_wr_addr <= aux_wr_addr;                      // commit the packet
+                    last_aux_w <= aux_w;
+
+                    last_commited_wr_addr_i <= commited_wr_addr_i;
+                    commited_wr_addr_i <= aux_wr_addr;
                     aux_wr_addr <= aux_wr_addr +1;
-                    byte_counter <= 32'b0;
+                    byte_counter <= 'b0;
+
+                    if (rx_data_valid) begin        // sof (preamble)
+                        if (rx_data_valid_reg[6]) begin
+                            commited_wr_addr <= commited_wr_addr_i;
+                        end
+                        else begin  
+                            commited_wr_addr <= aux_wr_addr;
+                        end
+                        rx_fsm <= s1;
+                    end
+                    else begin
+                        rx_fsm <= s3;
+                    end
+                end
+
+                s3 : begin
+                    wr_data <= {32'b1, 16'b0, last_aux_w};
+                    wr_addr <= commited_wr_addr_i;
+                    rx_activity <= 1'b1;
+
+                    commited_wr_addr <= commited_wr_addr_i + 1;
+                    commited_wr_addr_i <= commited_wr_addr_i + 1;
+                    aux_wr_addr <= aux_wr_addr +1;
 
                     if (rx_data_valid) begin        // sof (preamble)
                         rx_fsm <= s1;
@@ -222,7 +253,7 @@ module rx_mac_interface (
                     end
                 end
                 
-                s3 : begin                                  // drop current frame
+                s4 : begin                                  // drop current frame
                     if (rx_good_frame || rx_good_frame_reg || rx_bad_frame  || rx_bad_frame_reg) begin
                         dropped_frames_counter <= dropped_frames_counter +1; 
                         rx_fsm <= s0;
