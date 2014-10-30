@@ -113,6 +113,7 @@ module tx_retry_mon (
     reg     [3:0]   this_tlp_tag;
     reg     [63:0]  next_host_addr;
     reg     [9:0]   next_req_dw;
+    reg     [9:0]   aux_req_dw;
     reg     [3:0]   tag_to_update;
     reg             check_fin;
     
@@ -152,10 +153,11 @@ module tx_retry_mon (
             if (update_values) begin
                 host_addr_mem[tag_to_update] <= next_host_addr;
                 req_dw_mem[tag_to_update] <= next_req_dw;
+                aux_req_dw <= next_req_dw;
                 check_fin <= 1'b1;
             end
             if (check_fin) begin
-                if (!next_req_dw) begin
+                if (!aux_req_dw) begin
                     pending_trans[tag_to_update] <= 1'b0;
                 end
             end
