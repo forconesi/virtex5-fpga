@@ -219,6 +219,15 @@ module  pci_exp_64b_app (
     wire   [3:0]      tx_tlp_tag;
 
     //-------------------------------------------------------
+    // Local tx_retry_mon
+    //-------------------------------------------------------
+    wire   [63:0]     tx_retry_huge_page_addr_read_from;
+    wire              tx_retry_read_chunk;
+    wire   [3:0]      tx_retry_tlp_tag;
+    wire   [9:0]      tx_retry_dwords_to_rd;
+    wire              tx_retry_read_chunk_ack;
+
+    //-------------------------------------------------------
     // Local tx_wr_pkt_to_bram_mod
     //-------------------------------------------------------
     wire   [63:0]     tx_completed_buffer_address;
@@ -458,6 +467,11 @@ module  pci_exp_64b_app (
         .read_chunk_ack(tx_read_chunk_ack),                    // O
         .send_rd_completed(tx_send_rd_completed),              // I
         .send_rd_completed_ack(tx_send_rd_completed_ack),      // O
+        .retry_huge_page_addr(tx_retry_huge_page_addr_read_from),    // I [63:0]
+        .retry_read_chunk(tx_retry_read_chunk),                // I
+        .retry_tlp_tag(tx_retry_tlp_tag),                      // I [3:0]
+        .retry_dwords_to_rd(tx_retry_dwords_to_rd),            // I [9:0]
+        .retry_read_chunk_ack(tx_retry_read_chunk_ack),        // O
         .notify(tx_notify),                                    // I
         .notification_message(tx_notification_message),        // I [63:0]
         .notify_ack(tx_notify_ack),                            // O
@@ -465,6 +479,32 @@ module  pci_exp_64b_app (
         .send_interrupt_ack(tx_send_interrupt_ack),            // O
         .my_turn(tx_turn),                                     // I
         .driving_interface(tx_driven)                          // O
+        );
+
+    //-------------------------------------------------------
+    // tx_retry_mon
+    //-------------------------------------------------------
+    tx_retry_mon tx_retry_mon_mod (
+        .trn_clk(trn_clk),                                     // I
+        .reset(reset250),                                      // I
+        .trn_rd(trn_rd),                                       // I [63:0]
+        .trn_rrem_n(trn_rrem),                                 // I [7:0]
+        .trn_rsof_n(trn_rsof_n),                               // I
+        .trn_reof_n(trn_reof_n),                               // I
+        .trn_rsrc_rdy_n(trn_rsrc_rdy_n),                       // I
+        .trn_rsrc_dsc_n(trn_rsrc_dsc_n),                       // I
+        .trn_rbar_hit_n(trn_rbar_hit_n),                       // I [6:0]
+        .trn_rdst_rdy_n(trn_rdst_rdy_n),                       // I
+        .huge_page_addr_read_from(tx_huge_page_addr_read_from),// I [63:0]
+        .read_chunk(tx_read_chunk),                            // I
+        .tlp_tag(tx_tlp_tag),                                  // I [3:0]
+        .qwords_to_rd(tx_qwords_to_rd),                        // I [8:0]
+        .read_chunk_ack(tx_read_chunk_ack),                    // I
+        .retry_huge_page_addr_read_from(tx_retry_huge_page_addr_read_from),  // O [63:0]
+        .retry_read_chunk(tx_retry_read_chunk),                // O
+        .retry_tlp_tag(tx_retry_tlp_tag),                      // O [3:0]
+        .retry_dwords_to_rd(tx_retry_dwords_to_rd),            // O [9:0]
+        .retry_read_chunk_ack(tx_retry_read_chunk_ack)         // I
         );
 
     //-------------------------------------------------------

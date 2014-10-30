@@ -80,6 +80,12 @@ module tx_rd_host_mem (
     input                  send_rd_completed,
     output reg             send_rd_completed_ack,
 
+    input       [63:0]     retry_huge_page_addr,
+    input                  retry_read_chunk,
+    input       [3:0]      retry_tlp_tag,
+    input       [9:0]      retry_dwords_to_rd,
+    output reg             retry_read_chunk_ack,
+
     input                  notify,
     input       [63:0]     notification_message,
     output reg             notify_ack,
@@ -96,27 +102,30 @@ module tx_rd_host_mem (
     parameter NUMB_HP = 2;      // = 2^something
     
     // localparam
-    localparam s0  = 15'b000000000000000;
-    localparam s1  = 15'b000000000000001;
-    localparam s2  = 15'b000000000000010;
-    localparam s3  = 15'b000000000000100;
-    localparam s4  = 15'b000000000001000;
-    localparam s5  = 15'b000000000010000;
-    localparam s6  = 15'b000000000100000;
-    localparam s7  = 15'b000000001000000;
-    localparam s8  = 15'b000000010000000;
-    localparam s9  = 15'b000000100000000;
-    localparam s10 = 15'b000001000000000;
-    localparam s11 = 15'b000010000000000;
-    localparam s12 = 15'b000100000000000;
-    localparam s13 = 15'b001000000000000;
-    localparam s14 = 15'b010000000000000;
-    localparam s15 = 15'b100000000000000;
+    localparam s0  = 18'b000000000000000000;
+    localparam s1  = 18'b000000000000000001;
+    localparam s2  = 18'b000000000000000010;
+    localparam s3  = 18'b000000000000000100;
+    localparam s4  = 18'b000000000000001000;
+    localparam s5  = 18'b000000000000010000;
+    localparam s6  = 18'b000000000000100000;
+    localparam s7  = 18'b000000000001000000;
+    localparam s8  = 18'b000000000010000000;
+    localparam s9  = 18'b000000000100000000;
+    localparam s10 = 18'b000000001000000000;
+    localparam s11 = 18'b000000010000000000;
+    localparam s12 = 18'b000000100000000000;
+    localparam s13 = 18'b000001000000000000;
+    localparam s14 = 18'b000010000000000000;
+    localparam s15 = 18'b000100000000000000;
+    localparam s16 = 18'b001000000000000000;
+    localparam s17 = 18'b010000000000000000;
+    localparam s18 = 18'b100000000000000000;
 
     //-------------------------------------------------------
     // Local send_tlps_machine
     //-------------------------------------------------------   
-    reg     [14:0]  rd_host_fsm;
+    reg     [17:0]  rd_host_fsm;
     reg     [63:0]  host_mem_addr;
     reg     [63:0]  next_completed_buffer_address;
     reg     [63:0]  last_completed_buffer_address;
@@ -126,6 +135,8 @@ module tx_rd_host_mem (
     reg     [3:0]   next_tlp_tag;
     reg             aux0_high_mem;
     reg             aux1_high_mem;
+    reg             retry_aux0_high_mem;
+    reg     [63:0]  retry_host_mem_addr;
 
     ////////////////////////////////////////////////
     // read request TLP generation to huge_page
@@ -147,6 +158,8 @@ module tx_rd_host_mem (
             notify_ack <= 1'b0;
             tlp_tag <= 'b0;
 
+            retry_read_chunk_ack <= 1'b0;
+
             driving_interface <= 1'b0;
             rd_host_fsm <= s0;
         end
@@ -159,6 +172,8 @@ module tx_rd_host_mem (
             notify_ack <= 1'b0;
             next_huge_page_index <= (huge_page_index + 1) & (~NUMB_HP);
 
+            retry_read_chunk_ack <= 1'b0;
+
             case (rd_host_fsm)
 
                 s0 : begin
@@ -170,6 +185,10 @@ module tx_rd_host_mem (
                     aux1_high_mem <= | completed_buffer_address[63:32];
                     notification_message_reg <= notification_message;
                     next_tlp_tag <= tlp_tag +1;
+
+                    retry_aux0_high_mem <= | retry_huge_page_addr[63:32];
+                    retry_host_mem_addr <= retry_huge_page_addr;
+
                     if ((my_turn) && (trn_tbuf_av[1]) && (!trn_tdst_rdy_n) && (notify)) begin
                         driving_interface <= 1'b1;
                         notify_ack <= 1'b1;
@@ -190,6 +209,11 @@ module tx_rd_host_mem (
                         driving_interface <= 1'b1;
                         read_chunk_ack <= 1'b1;
                         rd_host_fsm <= s1;
+                    end
+                    else if ((my_turn) && (trn_tbuf_av[0]) && (!trn_tdst_rdy_n) && (retry_read_chunk)) begin
+                        driving_interface <= 1'b1;
+                        retry_read_chunk_ack <= 1'b1;
+                        rd_host_fsm <= s15;
                     end
                 end
 
@@ -382,6 +406,67 @@ module tx_rd_host_mem (
                         trn_td[63:32] <= {notification_message_reg[39:32], notification_message_reg[47:40], notification_message_reg[55:48], notification_message_reg[63:56]};
                         trn_teof_n <= 1'b0;
                         rd_host_fsm <= s4;
+                    end
+                end
+
+                s15 : begin
+                    trn_trem_n <= 8'b0;
+                    trn_td[63:32] <= {
+                                1'b0,   //reserved
+                                aux0_high_mem ? `MEM_RD64_FMT_TYPE : `MEM_RD32_FMT_TYPE, //memory read request 64bit or 32bit addressing
+                                1'b0,   //reserved
+                                3'b0,   //TC (traffic class)
+                                4'b0,   //reserved
+                                1'b0,   //TD (TLP digest present)
+                                1'b0,   //EP (poisoned data)
+                                2'b10,  //Relaxed ordering, No snoop in processor cache
+                                2'b0,   //reserved
+                                retry_dwords_to_rd
+                            };
+                    trn_td[31:0] <= {
+                                cfg_completer_id,   //Requester ID
+                                {4'b0, retry_tlp_tag },   //Tag
+                                4'hF,   //last DW byte enable
+                                4'hF    //1st DW byte enable
+                            };
+                    trn_tsof_n <= 1'b0;
+                    trn_tsrc_rdy_n <= 1'b0;
+
+                    if (retry_aux0_high_mem) begin
+                        rd_host_fsm <= s16;
+                    end
+                    else begin
+                        trn_trem_n <= 8'h0F;
+                        rd_host_fsm <= s17;
+                    end
+                end
+
+                s16 : begin
+                    if (!trn_tdst_rdy_n) begin
+                        trn_tsof_n <= 1'b1;
+                        trn_teof_n <= 1'b0;
+                        trn_td <= retry_host_mem_addr;
+                        rd_host_fsm <= s18;
+                    end
+                end
+
+                s17 : begin
+                    if (!trn_tdst_rdy_n) begin
+                        trn_tsof_n <= 1'b1;
+                        trn_teof_n <= 1'b0;
+                        trn_td[63:32] <= retry_host_mem_addr[31:0];
+                        rd_host_fsm <= s18;
+                    end
+                end
+
+                s18 : begin
+                    if (!trn_tdst_rdy_n) begin
+                        trn_tsrc_rdy_n <= 1'b1;
+                        trn_teof_n <= 1'b1;
+                        trn_trem_n <= 8'hFF;
+                        trn_td <= 64'b0;
+                        driving_interface <= 1'b0;
+                        rd_host_fsm <= s0;
                     end
                 end
 
