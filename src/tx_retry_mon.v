@@ -133,6 +133,7 @@ module tx_retry_mon (
 
         if (reset) begin  // reset
             pending_trans <= 'b0;
+            cpl_fsm <= s0;
             register_fsm <= s0;
         end
         
@@ -173,7 +174,7 @@ module tx_retry_mon (
                 s0 : begin
                     host_addr <= huge_page_addr_read_from;
                     tlp_tag_reg <= tlp_tag;
-                    dwords_to_rd_reg <= qwords_to_rd;
+                    dwords_to_rd_reg <= {qwords_to_rd, 1'b0};
                     if (read_chunk && read_chunk_ack) begin
                         register_fsm <= s1;
                     end
@@ -240,7 +241,7 @@ module tx_retry_mon (
                 end
 
                 s1 : begin
-                    if (counter[mon_index][13]) begin
+                    if (counter[mon_index] == 'h2000) begin     // change this to counter[mon_index][13] (synthesis doesn't work like this)
                         mon_fsm <= s2;
                     end
                     else begin
