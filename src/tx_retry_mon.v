@@ -168,7 +168,6 @@ module tx_retry_mon (
             end
 
             if (retry_read_chunk && retry_read_chunk_ack) begin
-                pending_trans[retry_tlp_tag] <= 1'b0;
                 counter[retry_tlp_tag] <= 'b0;
             end
 
