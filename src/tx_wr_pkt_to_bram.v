@@ -318,6 +318,47 @@ module tx_wr_pkt_to_bram (
         end     // not reset
     end  //always
 
+    //-------------------------------------------------------
+    // Local health_mon3
+    //-------------------------------------------------------
+    reg     [14:0]  health_mon_fsm3;
+    (* KEEP = "TRUE" *)reg     [31:0]   counter_mon3;
+
+    ////////////////////////////////////////////////
+    // health_mon
+    ////////////////////////////////////////////////
+    always @(posedge trn_clk) begin
+
+        if (reset) begin  // reset
+            health_mon_fsm3 <= s0;
+        end
+        
+        else begin  // not reset
+
+            case (health_mon_fsm3)
+
+                s0 : begin
+                    counter_mon3 <= 'b0;
+                    if (waiting_data_huge_page_1 && waiting_data_huge_page_2) begin
+                        health_mon_fsm3 <= s1;
+                    end
+                end
+
+                s1 : begin
+                    counter_mon3 <= counter_mon3 + 1;
+                    if (!waiting_data_huge_page_1 || !waiting_data_huge_page_2) begin
+                        health_mon_fsm3 <= s0;
+                    end
+                end
+
+                default : begin
+                    health_mon_fsm3 <= s0;
+                end
+
+            endcase
+        end     // not reset
+    end  //always
+
     ////////////////////////////////////////////////
     // current_huge_page_addr
     ////////////////////////////////////////////////
@@ -737,6 +778,17 @@ module tx_wr_pkt_to_bram (
                     if (send_notification_huge_page_1_ack) begin
                         waiting_data_huge_page_1 <= 1'b0;
                         send_notification_huge_page_1 <= 1'b0;
+                        if (!reading_huge_page_1) begin
+                            huge_page_1_notifications_fsm <= s0;
+                        end
+                        else begin
+                            huge_page_1_notifications_fsm <= s5;
+                        end
+                    end
+                end
+
+                s5 : begin
+                    if (!reading_huge_page_1) begin
                         huge_page_1_notifications_fsm <= s0;
                     end
                 end
@@ -807,6 +859,17 @@ module tx_wr_pkt_to_bram (
                     if (send_notification_huge_page_2_ack) begin
                         waiting_data_huge_page_2 <= 1'b0;
                         send_notification_huge_page_2 <= 1'b0;
+                        if (!reading_huge_page_2) begin
+                            huge_page_2_notifications_fsm <= s0;
+                        end
+                        else begin
+                            huge_page_2_notifications_fsm <= s5;
+                        end
+                    end
+                end
+
+                s5 : begin
+                    if (!reading_huge_page_2) begin
                         huge_page_2_notifications_fsm <= s0;
                     end
                 end
