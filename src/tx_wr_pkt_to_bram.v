@@ -305,7 +305,7 @@ module tx_wr_pkt_to_bram (
 
                 s1 : begin
                     counter_mon2 <= counter_mon2 + 1;
-                    if (stuck_waiting) begin
+                    if (!stuck_waiting) begin
                         health_mon_fsm2 <= s0;
                     end
                 end
