@@ -182,7 +182,6 @@ module  pci_exp_64b_app (
     wire                                              rx_trigger_tlp_ack;
     wire                                              rx_change_huge_page;
     wire                                              rx_change_huge_page_ack;
-    wire                                              rx_send_last_tlp;
     wire   [4:0]                                      rx_qwords_to_send;
 
     wire   [63:0]     rx_trn_td;
@@ -216,7 +215,7 @@ module  pci_exp_64b_app (
     wire              tx_trn_teof_n;
     wire              tx_trn_tsrc_rdy_n;
     wire              tx_cfg_interrupt_n;
-    wire   [3:0]      tx_tlp_tag;
+    wire   [7:0]      tx_tlp_tag;
 
     //-------------------------------------------------------
     // Local tx_wr_pkt_to_bram_mod
@@ -244,6 +243,9 @@ module  pci_exp_64b_app (
     wire              rx_driven;
     wire              tx_turn;
     wire              tx_driven;
+    wire   [7:0]      tag;
+    wire              rx_consumed_tag;
+    wire              tx_consumed_tag;
 
     //////////////////////////////////////////////////////////////////////////////////////////
     // Interrupt control logic
@@ -362,7 +364,6 @@ module  pci_exp_64b_app (
         .trigger_tlp_ack(rx_trigger_tlp_ack),                  // I
         .change_huge_page(rx_change_huge_page),                // O
         .change_huge_page_ack(rx_change_huge_page_ack),        // I
-        .send_last_tlp(rx_send_last_tlp),                      // O
         .qwords_to_send(rx_qwords_to_send)                     // O [4:0]
         );
 
@@ -382,6 +383,8 @@ module  pci_exp_64b_app (
         .cfg_completer_id(cfg_completer_id),                   // I [15:0]
         .cfg_interrupt_n(rx_cfg_interrupt_n),                  // O
         .cfg_interrupt_rdy_n(cfg_interrupt_rdy_n),             // I
+        .consumed_tag(rx_consumed_tag),                        // O
+        .tag(tag),                                             // I [7:0]
         .huge_page_addr_1(rx_huge_page_addr_1),                // I [63:0]
         .huge_page_addr_2(rx_huge_page_addr_2),                // I [63:0]
         .huge_page_status_1(rx_huge_page_status_1),            // I
@@ -393,7 +396,6 @@ module  pci_exp_64b_app (
         .trigger_tlp_ack(rx_trigger_tlp_ack),                  // O
         .change_huge_page(rx_change_huge_page),                // I
         .change_huge_page_ack(rx_change_huge_page_ack),        // O
-        .send_last_tlp(rx_send_last_tlp),                      // I
         .qwords_to_send(rx_qwords_to_send),                    // I [4:0]
         .commited_rd_addr(rx_commited_rd_addr),                // O [`BF:0]
         .rd_addr(rx_rd_addr),                                  // O [`BF:0]
@@ -450,10 +452,12 @@ module  pci_exp_64b_app (
         .cfg_completer_id(cfg_completer_id),                   // I [15:0]
         .cfg_interrupt_n(tx_cfg_interrupt_n),                  // O
         .cfg_interrupt_rdy_n(cfg_interrupt_rdy_n),             // I
+        .consumed_tag(tx_consumed_tag),                        // O
+        .tag(tag),                                             // I [7:0]
         .completed_buffer_address(tx_completed_buffer_address),// I [63:0]
         .huge_page_addr(tx_huge_page_addr_read_from),          // I [63:0]
         .read_chunk(tx_read_chunk),                            // I
-        .tlp_tag(tx_tlp_tag),                                  // O [3:0]
+        .tlp_tag(tx_tlp_tag),                                  // O [7:0]
         .qwords_to_rd(tx_qwords_to_rd),                        // I [8:0]
         .read_chunk_ack(tx_read_chunk_ack),                    // O
         .send_rd_completed(tx_send_rd_completed),              // I
@@ -492,7 +496,7 @@ module  pci_exp_64b_app (
         .interrupts_enabled(interrupts_enabled),               // I
         .huge_page_addr_read_from(tx_huge_page_addr_read_from),// O [63:0]
         .read_chunk(tx_read_chunk),                            // O
-        .tlp_tag(tx_tlp_tag),                                  // I [3:0]
+        .tlp_tag(tx_tlp_tag),                                  // I [4:0]
         .qwords_to_rd(tx_qwords_to_rd),                        // O [8:0]
         .read_chunk_ack(tx_read_chunk_ack),                    // I
         .send_rd_completed(tx_send_rd_completed),              // O
@@ -518,6 +522,9 @@ module  pci_exp_64b_app (
     enpoint_arbitration enpoint_arbitration_mod (
         .trn_clk(trn_clk),                                     // I
         .reset(reset250),                                      // I
+        .cfg_ext_tag_en(cfg_ext_tag_en),                       // I
+        .consumed_tag({rx_consumed_tag, tx_consumed_tag}),     // I [1:0]
+        .tag(tag),                                             // O [7:0]
         .rx_turn(rx_turn),                                     // O
         .rx_driven(rx_driven),                                 // I
         .tx_turn(tx_turn),                                     // O

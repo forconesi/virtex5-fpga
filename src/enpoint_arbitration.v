@@ -48,6 +48,11 @@ module enpoint_arbitration (
     input                  trn_clk,
     input                  reset,
 
+    input                  cfg_ext_tag_en,
+
+    input       [1:0]      consumed_tag,    // number of DMA engines * number of subsytems
+    output reg  [7:0]      tag,
+
     // Rx
     output reg             rx_turn,
     input                  rx_driven,
@@ -84,9 +89,22 @@ module enpoint_arbitration (
         
         else begin  // not reset
 
+            if (consumed_tag) begin
+                tag <= tag + 1;
+            end
+
+            if (!cfg_ext_tag_en) begin
+                tag[7:5] <= 'b0;
+            end
+
             case (fsm)
 
                 s0 : begin
+                    tag <= 'b0;
+                    fsm <= s1;
+                end
+
+                s1 : begin
                     if ( (!rx_driven) && (!tx_driven) ) begin
                         turn_bit <= ~turn_bit;
                         if (!turn_bit) begin
@@ -95,14 +113,14 @@ module enpoint_arbitration (
                         else begin
                             tx_turn <= 1'b1;
                         end
-                        fsm <= s1;
+                        fsm <= s2;
                     end
                 end
 
-                s1 : begin
+                s2 : begin
                     rx_turn <= 1'b0;
                     tx_turn <= 1'b0;
-                    fsm <= s0;
+                    fsm <= s1;
                 end
 
                 default : begin 

@@ -58,7 +58,6 @@ module rx_tlp_trigger (
     input                   trigger_tlp_ack,
     output reg              change_huge_page,
     input                   change_huge_page_ack,
-    output reg              send_last_tlp,
     output reg [4:0]        qwords_to_send
     );
 
@@ -132,7 +131,6 @@ module rx_tlp_trigger (
         if (reset) begin  // reset
             trigger_tlp <= 1'b0;
             change_huge_page <= 1'b0;
-            send_last_tlp <= 1'b0;
 
             diff <= 'b0;
             commited_rd_addr <= 'b0;
@@ -175,7 +173,7 @@ module rx_tlp_trigger (
                         end
                         else begin
                             qwords_to_send <= {1'b0, qwords_remaining};
-                            send_last_tlp <= 1'b1;
+                            trigger_tlp <= 1'b1;
                             trigger_fsm <= s6;
                         end
                     end
@@ -225,8 +223,9 @@ module rx_tlp_trigger (
 
                 s6 : begin
                     look_ahead_commited_rd_addr <= commited_rd_addr + qwords_to_send;
-                    if (change_huge_page_ack) begin
-                        send_last_tlp <= 1'b0;
+                    if (trigger_tlp_ack) begin
+                        trigger_tlp <= 1'b0;
+                        change_huge_page <= 1'b1;
                         trigger_fsm <= s7;
                     end
                 end
@@ -236,7 +235,10 @@ module rx_tlp_trigger (
                     huge_buffer_qword_counter <= 'h10;
                     qwords_remaining <= 'b0;
                     huge_page_dirty <= 1'b0;
-                    trigger_fsm <= s8;
+                    if (change_huge_page_ack) begin
+                        change_huge_page <= 1'b0;
+                        trigger_fsm <= s8;
+                    end
                 end
 
                 s8 : begin
@@ -250,14 +252,14 @@ module rx_tlp_trigger (
                     end
                     else begin
                         qwords_to_send <= {1'b0, qwords_remaining};
-                        send_last_tlp <= 1'b1;
+                        trigger_tlp <= 1'b1;
                         trigger_fsm <= s6;
                     end
                 end
 
                 s10 : begin
                     qwords_to_send <= diff_reg;
-                    send_last_tlp <= 1'b1;
+                    trigger_tlp <= 1'b1;
                     trigger_fsm <= s6;
                 end
                 

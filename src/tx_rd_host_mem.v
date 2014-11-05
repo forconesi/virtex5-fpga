@@ -69,12 +69,14 @@ module tx_rd_host_mem (
     input                  cfg_interrupt_rdy_n,
 
     // Internal logic
+    output reg             consumed_tag,
+    input       [7:0]      tag,
 
     input       [63:0]     completed_buffer_address,
 
     input       [63:0]     huge_page_addr,
     input                  read_chunk,
-    output reg  [3:0]      tlp_tag,
+    output reg  [7:0]      tlp_tag,
     input       [8:0]      qwords_to_rd,
     output reg             read_chunk_ack,
     input                  send_rd_completed,
@@ -123,7 +125,6 @@ module tx_rd_host_mem (
     reg     [31:0]  huge_page_index;
     reg     [31:0]  next_huge_page_index;
     reg     [63:0]  notification_message_reg;
-    reg     [3:0]   next_tlp_tag;
     reg             aux0_high_mem;
     reg             aux1_high_mem;
 
@@ -140,18 +141,21 @@ module tx_rd_host_mem (
             trn_tsrc_rdy_n <= 1'b1;
             cfg_interrupt_n <= 1'b1;
 
+            consumed_tag <= 1'b0;
+
             read_chunk_ack <= 1'b0;
             send_rd_completed_ack <= 1'b0;
             huge_page_index <= 'b0;
             send_interrupt_ack <= 1'b0;
             notify_ack <= 1'b0;
-            tlp_tag <= 'b0;
 
             driving_interface <= 1'b0;
             rd_host_fsm <= s0;
         end
         
         else begin  // not reset
+
+            consumed_tag <= 1'b0;
 
             read_chunk_ack <= 1'b0;
             send_rd_completed_ack <= 1'b0;
@@ -169,7 +173,7 @@ module tx_rd_host_mem (
                     aux0_high_mem <= | huge_page_addr[63:32];
                     aux1_high_mem <= | completed_buffer_address[63:32];
                     notification_message_reg <= notification_message;
-                    next_tlp_tag <= tlp_tag +1;
+                    tlp_tag <= tag;
                     if ((my_turn) && (trn_tbuf_av[1]) && (!trn_tdst_rdy_n) && (notify)) begin
                         driving_interface <= 1'b1;
                         notify_ack <= 1'b1;
@@ -180,7 +184,7 @@ module tx_rd_host_mem (
                         send_rd_completed_ack <= 1'b1;
                         rd_host_fsm <= s5;
                     end
-                    else if ((my_turn) && (trn_tbuf_av[1]) && (!trn_tdst_rdy_n) && (send_interrupt)) begin
+                    else if ((my_turn) && (send_interrupt)) begin
                         cfg_interrupt_n <= 1'b0;
                         driving_interface <= 1'b1;
                         send_interrupt_ack <= 1'b1;
@@ -209,13 +213,13 @@ module tx_rd_host_mem (
                             };
                     trn_td[31:0] <= {
                                 cfg_completer_id,   //Requester ID
-                                {4'b0, tlp_tag },   //Tag
+                                tlp_tag,   //Tag
                                 4'hF,   //last DW byte enable
                                 4'hF    //1st DW byte enable
                             };
                     trn_tsof_n <= 1'b0;
                     trn_tsrc_rdy_n <= 1'b0;
-                    tlp_tag <= next_tlp_tag;
+                    consumed_tag <= 1'b1;
 
                     if (aux0_high_mem) begin
                         rd_host_fsm <= s2;
@@ -272,12 +276,13 @@ module tx_rd_host_mem (
                             };
                     trn_td[31:0] <= {
                                 cfg_completer_id,   //Requester ID
-                                {4'b0, 4'b0 },   //Tag
+                                tlp_tag,   //Tag
                                 4'h0,   //last DW byte enable
                                 4'hF    //1st DW byte enable
                             };
                     trn_tsof_n <= 1'b0;
                     trn_tsrc_rdy_n <= 1'b0;
+                    consumed_tag <= 1'b1;
                     
                     if (aux1_high_mem) begin
                         trn_trem_n <= 8'h0F;
@@ -337,12 +342,13 @@ module tx_rd_host_mem (
                             };
                     trn_td[31:0] <= {
                                 cfg_completer_id,   //Requester ID
-                                {4'b0, 4'b0 },   //Tag
+                                tlp_tag,   //Tag
                                 4'hF,   //last DW byte enable
                                 4'hF    //1st DW byte enable
                             };
                     trn_tsof_n <= 1'b0;
                     trn_tsrc_rdy_n <= 1'b0;
+                    consumed_tag <= 1'b1;
                     
                     if (aux1_high_mem) begin
                         rd_host_fsm <= s11;

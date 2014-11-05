@@ -69,6 +69,9 @@ module rx_wr_pkt_to_hugepages (
     input                  cfg_interrupt_rdy_n,
 
     // Internal logic  //
+    output reg             consumed_tag,
+    input       [7:0]      tag,
+
     input       [63:0]     huge_page_addr_1,
     input       [63:0]     huge_page_addr_2,
     input                  huge_page_status_1,
@@ -81,7 +84,6 @@ module rx_wr_pkt_to_hugepages (
     output reg             trigger_tlp_ack,
     input                  change_huge_page,
     output reg             change_huge_page_ack,
-    input                  send_last_tlp,
     input       [4:0]      qwords_to_send,
 
     output reg  [`BF:0]    commited_rd_addr,
@@ -139,18 +141,16 @@ module rx_wr_pkt_to_hugepages (
     reg     [27:0]      send_fsm;
     reg                 return_huge_page_to_host;
     reg     [8:0]       tlp_qword_counter;
-    reg     [31:0]      tlp_number;
-    reg     [31:0]      look_ahead_tlp_number;
     reg     [8:0]       qwords_in_tlp;
     reg     [63:0]      host_mem_addr;
     reg     [63:0]      look_ahead_host_mem_addr;
     reg     [31:0]      huge_page_qword_counter;
     reg     [31:0]      look_ahead_huge_page_qword_counter;
-    reg                 remember_to_change_huge_page;
     reg     [`BF:0]     rd_addr_prev1;
     reg     [`BF:0]     rd_addr_prev2;
     reg     [`BF:0]     look_ahead_commited_rd_addr;
     reg     [31:0]      aux_rd_data;
+    reg     [7:0]       tag_reg;
     
     ////////////////////////////////////////////////
     // current_huge_page_addr
@@ -240,7 +240,8 @@ module rx_wr_pkt_to_hugepages (
             trn_tsrc_rdy_n <= 1'b1;
             cfg_interrupt_n <= 1'b1;
 
-            remember_to_change_huge_page <= 1'b0;
+            consumed_tag <= 1'b0;
+
             return_huge_page_to_host <= 1'b0;
             driving_interface <= 1'b0;
 
@@ -250,12 +251,12 @@ module rx_wr_pkt_to_hugepages (
             commited_rd_addr <= 'b0;
             rd_addr <= 'b0;
 
-            tlp_number <= 'b0;
-
             send_fsm <= s0;
         end
         
         else begin  // not reset
+
+            consumed_tag <= 1'b0;
 
             trigger_tlp_ack <= 1'b0;
             change_huge_page_ack <= 1'b0;
@@ -285,21 +286,16 @@ module rx_wr_pkt_to_hugepages (
 
                 s1 : begin
                     qwords_in_tlp <= {4'b0, qwords_to_send};
+                    tag_reg <= tag;
 
                     driving_interface <= 1'b0;                                              // we're taking the risk of starving the tx process
                     trn_td <= 64'b0;
                     trn_trem_n <= 8'hFF;
                     if ( (trn_tbuf_av[1]) && (!trn_tdst_rdy_n) && (my_turn || driving_interface) ) begin
-                        if (change_huge_page || remember_to_change_huge_page) begin
-                            remember_to_change_huge_page <= 1'b0;
+                        if (change_huge_page) begin
                             change_huge_page_ack <= 1'b1;
                             driving_interface <= 1'b1;
                             send_fsm <= s10;
-                        end
-                        else if (send_last_tlp) begin
-                            remember_to_change_huge_page <= 1'b1;
-                            driving_interface <= 1'b1;
-                            send_fsm <= s2;
                         end
                         else if (trigger_tlp) begin
                             driving_interface <= 1'b1;
@@ -325,7 +321,7 @@ module rx_wr_pkt_to_hugepages (
                             };
                     trn_td[31:0] <= {
                                 cfg_completer_id,   //Requester ID
-                                {4'b0, tlp_number[3:0] },   //Tag
+                                tag_reg,   //Tag
                                 4'hF,   //last DW byte enable
                                 4'hF    //1st DW byte enable
                             };
@@ -335,8 +331,8 @@ module rx_wr_pkt_to_hugepages (
 
                     look_ahead_host_mem_addr <= host_mem_addr + {qwords_in_tlp, 3'b0};
                     look_ahead_huge_page_qword_counter <= huge_page_qword_counter + qwords_in_tlp;
-                    look_ahead_tlp_number <= tlp_number +1;
                     look_ahead_commited_rd_addr <= commited_rd_addr + qwords_in_tlp;
+                    consumed_tag <= 1'b1;
 
                     send_fsm <= s3;
                 end
@@ -409,7 +405,6 @@ module rx_wr_pkt_to_hugepages (
                     rd_addr <= look_ahead_commited_rd_addr;
                     host_mem_addr <= look_ahead_host_mem_addr;
                     huge_page_qword_counter <= look_ahead_huge_page_qword_counter;
-                    tlp_number <= look_ahead_tlp_number;
                     if (!trn_tdst_rdy_n) begin
                         trn_teof_n <= 1'b1;
                         trn_tsrc_rdy_n <= 1'b1;
@@ -433,12 +428,13 @@ module rx_wr_pkt_to_hugepages (
                             };
                     trn_td[31:0] <= {
                                 cfg_completer_id,   //Requester ID
-                                {4'b0, 4'b0 },   //Tag
+                                tag_reg,   //Tag
                                 4'hF,   //last DW byte enable
                                 4'hF    //1st DW byte enable
                             };
                     trn_tsof_n <= 1'b0;
                     trn_tsrc_rdy_n <= 1'b0;
+                    consumed_tag <= 1'b1;
                     send_fsm <= s11;
                 end
 
@@ -480,16 +476,10 @@ module rx_wr_pkt_to_hugepages (
                     trn_td <= 64'b0;
                     trn_trem_n <= 8'hFF;
                     if ( (trn_tbuf_av[1]) && (!trn_tdst_rdy_n) && (my_turn || driving_interface) ) begin
-                        if (change_huge_page || remember_to_change_huge_page) begin
-                            remember_to_change_huge_page <= 1'b0;
+                        if (change_huge_page) begin
                             change_huge_page_ack <= 1'b1;
                             driving_interface <= 1'b1;
                             send_fsm <= s24;
-                        end
-                        else if (send_last_tlp) begin
-                            remember_to_change_huge_page <= 1'b1;
-                            driving_interface <= 1'b1;
-                            send_fsm <= s15;
                         end
                         else if (trigger_tlp) begin
                             driving_interface <= 1'b1;
@@ -520,7 +510,7 @@ module rx_wr_pkt_to_hugepages (
                             };
                     trn_td[31:0] <= {
                                 cfg_completer_id,   //Requester ID
-                                {4'b0, tlp_number[3:0] },   //Tag
+                                tag_reg,   //Tag
                                 4'hF,   //last DW byte enable
                                 4'hF    //1st DW byte enable
                             };
@@ -530,8 +520,8 @@ module rx_wr_pkt_to_hugepages (
 
                     look_ahead_host_mem_addr <= host_mem_addr + {qwords_in_tlp, 3'b0};
                     look_ahead_huge_page_qword_counter <= huge_page_qword_counter + qwords_in_tlp;
-                    look_ahead_tlp_number <= tlp_number +1;
                     look_ahead_commited_rd_addr <= commited_rd_addr + qwords_in_tlp;
+                    consumed_tag <= 1'b1;
 
                     send_fsm <= s17;
                 end
@@ -604,7 +594,6 @@ module rx_wr_pkt_to_hugepages (
                     rd_addr <= look_ahead_commited_rd_addr;
                     host_mem_addr <= look_ahead_host_mem_addr;
                     huge_page_qword_counter <= look_ahead_huge_page_qword_counter;
-                    tlp_number <= look_ahead_tlp_number;
                     if (!trn_tdst_rdy_n) begin
                         trn_teof_n <= 1'b1;
                         trn_tsrc_rdy_n <= 1'b1;
@@ -628,12 +617,13 @@ module rx_wr_pkt_to_hugepages (
                             };
                     trn_td[31:0] <= {
                                 cfg_completer_id,   //Requester ID
-                                {4'b0, 4'b0 },   //Tag
+                                tag_reg,   //Tag
                                 4'hF,   //last DW byte enable
                                 4'hF    //1st DW byte enable
                             };
                     trn_tsof_n <= 1'b0;
                     trn_tsrc_rdy_n <= 1'b0;
+                    consumed_tag <= 1'b1;
                     send_fsm <= s25;
                 end
 
