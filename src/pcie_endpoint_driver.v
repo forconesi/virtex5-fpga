@@ -296,6 +296,14 @@ module  pcie_endpoint_driver (
     //wire   [31:0]     sys_secs;
     //wire              rx_timestamp_en;
 
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // PCIe Endpoint Error detection
+    //////////////////////////////////////////////////////////////////////////////////////////
+    //-------------------------------------------------------
+    // Local PCIe Endpoint Error detection
+    //-------------------------------------------------------
+    (* KEEP = "TRUE" *)wire   [4:0]      detected_errors;
+
     //-------------------------------------------------------
     // Core input tie-offs
     //-------------------------------------------------------
@@ -338,6 +346,17 @@ module  pcie_endpoint_driver (
     assign cfg_ext_tag_en = cfg_dcommand[8];
     assign cfg_max_rd_req_size = cfg_dcommand[14:12];
     assign cfg_max_payload_size = cfg_dcommand[7:5];
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // PCIe Endpoint Error detection
+    //////////////////////////////////////////////////////////////////////////////////////////
+    err_detect err_detect_mod (
+        .trn_clk(trn_clk),                                     // I
+        .reset(reset250),                                      // I
+        .trn_rerrfwd_n(trn_rerrfwd_n),                         // I
+        .cfg_dstatus(cfg_dstatus),                             // I [15:0]
+        .detected_errors(detected_errors)                      // O [4:0]
+        );
 
     //////////////////////////////////////////////////////////////////////////////////////////
     // MDIO host interface
