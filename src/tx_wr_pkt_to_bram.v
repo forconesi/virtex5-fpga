@@ -97,23 +97,17 @@ module tx_wr_pkt_to_bram (
     );
 
     // localparam
-    localparam s0  = 16'b0000000000000000;
-    localparam s1  = 16'b0000000000000001;
-    localparam s2  = 16'b0000000000000010;
-    localparam s3  = 16'b0000000000000100;
-    localparam s4  = 16'b0000000000001000;
-    localparam s5  = 16'b0000000000010000;
-    localparam s6  = 16'b0000000000100000;
-    localparam s7  = 16'b0000000001000000;
-    localparam s8  = 16'b0000000010000000;
-    localparam s9  = 16'b0000000100000000;
-    localparam s10 = 16'b0000001000000000;
-    localparam s11 = 16'b0000010000000000;
-    localparam s12 = 16'b0000100000000000;
-    localparam s13 = 16'b0001000000000000;
-    localparam s14 = 16'b0010000000000000;
-    localparam s15 = 16'b0100000000000000;
-    localparam s16 = 16'b1000000000000000;
+    localparam s0  = 11'b00000000001;
+    localparam s1  = 11'b00000000010;
+    localparam s2  = 11'b00000000100;
+    localparam s3  = 11'b00000001000;
+    localparam s4  = 11'b00000010000;
+    localparam s5  = 11'b00000100000;
+    localparam s6  = 11'b00001000000;
+    localparam s7  = 11'b00010000000;
+    localparam s8  = 11'b00100000000;
+    localparam s9  = 11'b01000000000;
+    localparam s10 = 11'b10000000000;
 
     localparam hp1 = 2'b01;
     localparam hp2 = 2'b10;
@@ -123,8 +117,8 @@ module tx_wr_pkt_to_bram (
     //-------------------------------------------------------
     reg     [63:0]  current_huge_page_addr;
     reg     [31:0]  current_huge_page_qwords;
-    reg     [14:0]  give_huge_page_fsm;
-    reg     [14:0]  free_huge_page_fsm;
+    reg     [10:0]  give_huge_page_fsm = s0;
+    reg     [10:0]  free_huge_page_fsm = s0;
     reg             huge_page_available;
     reg             reading_huge_page_1;
     reg             reading_huge_page_2;
@@ -133,7 +127,7 @@ module tx_wr_pkt_to_bram (
     // Local trigger_rd_tlp
     //-------------------------------------------------------   
     reg             return_huge_page_to_host;
-    reg     [15:0]  trigger_rd_tlp_fsm;
+    reg     [10:0]  trigger_rd_tlp_fsm = s0;
     /*(* KEEP = "TRUE" *)*/reg     [9:0] diff;
     reg     [9:0]   next_wr_addr;
     reg     [9:0]   look_ahead_next_wr_addr;
@@ -165,12 +159,12 @@ module tx_wr_pkt_to_bram (
     //-------------------------------------------------------
     // Local trigger_interrupts
     //-------------------------------------------------------
-    reg     [14:0]  trigger_interrupts_fsm;
+    reg     [10:0]  trigger_interrupts_fsm = s0;
     
     //-------------------------------------------------------
     // Local huge_page_1_notifications
     //-------------------------------------------------------
-    reg     [14:0]  huge_page_1_notifications_fsm;
+    reg     [10:0]  huge_page_1_notifications_fsm = s0;
     reg     [63:0]  address_to_notify_huge_page_1;
     reg     [31:0]  qwords_to_rd_huge_page_1;
     reg     [32:0]  dwords_received_huge_page_1;
@@ -184,7 +178,7 @@ module tx_wr_pkt_to_bram (
     //-------------------------------------------------------
     // Local huge_page_2_notifications
     //-------------------------------------------------------
-    reg     [14:0]  huge_page_2_notifications_fsm;
+    reg     [10:0]  huge_page_2_notifications_fsm = s0;
     reg     [63:0]  address_to_notify_huge_page_2;
     reg     [31:0]  qwords_to_rd_huge_page_2;
     reg     [32:0]  dwords_received_huge_page_2;
@@ -198,13 +192,13 @@ module tx_wr_pkt_to_bram (
     //-------------------------------------------------------
     // Local huge_page_1_notifications & huge_page_2_notifications mixer
     //-------------------------------------------------------
-    reg     [14:0]  notification_mixer_fsm;
+    reg     [10:0]  notification_mixer_fsm = s0;
 
     //-------------------------------------------------------
     // Local completion_tlp & write to bram (wr_to_bram_fsm)
     //-------------------------------------------------------
-    reg     [14:0]  wr_to_bram_fsm;
-    reg     [14:0]  commit_wr_addr_fsm;
+    reg     [10:0]  wr_to_bram_fsm = s0;
+    reg     [10:0]  commit_wr_addr_fsm = s0;
     reg     [8:0]   qwords_on_tlp;
     reg     [9:0]   dwords_on_tlp;
     reg             completion_received;
@@ -228,9 +222,9 @@ module tx_wr_pkt_to_bram (
     //-------------------------------------------------------
     // Local health_mon
     //-------------------------------------------------------
-    reg     [14:0]  health_mon_fsm;
+    reg     [10:0]  health_mon_fsm = s0;
     reg     [9:0]   diff_mon_reg;
-    (* KEEP = "TRUE" *)reg     [31:0]   counter_mon;
+    /*(* KEEP = "TRUE" *)*/reg     [31:0]   counter_mon;
 
     ////////////////////////////////////////////////
     // health_mon
@@ -244,7 +238,8 @@ module tx_wr_pkt_to_bram (
         
         else begin  // not reset
 
-            case (health_mon_fsm)
+            (* parallel_case *)
+            casex (health_mon_fsm)
 
                 s0 : begin
                     diff_mon_reg <= diff;
@@ -263,10 +258,6 @@ module tx_wr_pkt_to_bram (
                     if (!diff) begin
                         health_mon_fsm <= s0;
                     end
-                end
-
-                default : begin
-                    health_mon_fsm <= s0;
                 end
 
             endcase
@@ -290,7 +281,8 @@ module tx_wr_pkt_to_bram (
 
         else begin  // not reset
 
-            case (free_huge_page_fsm)
+            (* parallel_case *)
+            casex (free_huge_page_fsm)
                 s0 : begin
                     if (return_huge_page_to_host) begin
                         huge_page_free_1 <= 1'b1;
@@ -313,7 +305,8 @@ module tx_wr_pkt_to_bram (
                 end
             endcase
 
-            case (give_huge_page_fsm)
+            (* parallel_case *)
+            casex (give_huge_page_fsm)
                 s0 : begin
                     if (huge_page_status_1 && !waiting_data_huge_page_1) begin
                         huge_page_available <= 1'b1;
@@ -402,7 +395,8 @@ module tx_wr_pkt_to_bram (
                 aux_max_qw_numb <= 'h10;
             end
 
-            case (trigger_rd_tlp_fsm)
+            (* parallel_case *)
+            casex (trigger_rd_tlp_fsm)
 
                 s0 : begin
                     huge_page_addr_read_from <= current_huge_page_addr;
@@ -498,10 +492,6 @@ module tx_wr_pkt_to_bram (
                     end
                 end
 
-                default : begin
-                    trigger_rd_tlp_fsm <= s0;
-                end
-
             endcase
         end     // not reset
     end  //always
@@ -520,7 +510,8 @@ module tx_wr_pkt_to_bram (
 
             send_interrupt <= 1'b0;
 
-            case (trigger_interrupts_fsm)
+            (* parallel_case *)
+            casex (trigger_interrupts_fsm)
 
                 s0 : begin
                     if ( waiting_data_huge_page_1 || waiting_data_huge_page_2 ) begin
@@ -533,10 +524,6 @@ module tx_wr_pkt_to_bram (
                         send_interrupt <= 1'b1;
                         trigger_interrupts_fsm <= s0;
                     end
-                end
-
-                default : begin
-                    trigger_interrupts_fsm <= s0;
                 end
 
             endcase
@@ -558,7 +545,8 @@ module tx_wr_pkt_to_bram (
 
             notification_huge_page_1 <= address_to_notify_huge_page_1 + {qwords_to_rd_huge_page_1, 3'b0};
 
-            case (huge_page_1_notifications_fsm)
+            (* parallel_case *)
+            casex (huge_page_1_notifications_fsm)
 
                 s0 : begin
                     address_to_notify_huge_page_1 <= huge_page_addr_1;
@@ -618,10 +606,6 @@ module tx_wr_pkt_to_bram (
                     end
                 end
 
-                default : begin
-                    huge_page_1_notifications_fsm <= s0;
-                end
-
             endcase
         end     // not reset
     end  //always
@@ -641,7 +625,8 @@ module tx_wr_pkt_to_bram (
 
             notification_huge_page_2 <= address_to_notify_huge_page_2 + {qwords_to_rd_huge_page_2, 3'b0};
 
-            case (huge_page_2_notifications_fsm)
+            (* parallel_case *)
+            casex (huge_page_2_notifications_fsm)
 
                 s0 : begin
                     address_to_notify_huge_page_2 <= huge_page_addr_2;
@@ -701,10 +686,6 @@ module tx_wr_pkt_to_bram (
                     end
                 end
 
-                default : begin
-                    huge_page_2_notifications_fsm <= s0;
-                end
-
             endcase
         end     // not reset
     end  //always
@@ -726,7 +707,8 @@ module tx_wr_pkt_to_bram (
             send_notification_huge_page_1_ack <= 1'b0;
             send_notification_huge_page_2_ack <= 1'b0;
 
-            case (notification_mixer_fsm)
+            (* parallel_case *)
+            casex (notification_mixer_fsm)
 
                 s0 : begin
                     notification_message <= notification_huge_page_1;
@@ -758,10 +740,6 @@ module tx_wr_pkt_to_bram (
                         notify <= 1'b0;
                         notification_mixer_fsm <= s0;
                     end
-                end
-
-                default : begin
-                    notification_mixer_fsm <= s0;
                 end
 
             endcase
@@ -801,7 +779,8 @@ module tx_wr_pkt_to_bram (
             
             next_target_tlp <= target_tlp +1;
             look_ahead_completed_requests <= completed_requests +1;
-            case (commit_wr_addr_fsm)                           // provided that tlps of one single request are received in order
+            (* parallel_case *)
+            casex (commit_wr_addr_fsm)                           // provided that tlps of one single request are received in order
 
                 s0 : begin
                     if (data_ready[target_tlp]) begin
@@ -819,13 +798,10 @@ module tx_wr_pkt_to_bram (
                     commit_wr_addr_fsm <= s0;
                 end
 
-                default : begin //other TLPs
-                    commit_wr_addr_fsm <= s0;
-                end
-
             endcase
 
-            case (wr_to_bram_fsm)
+            (* parallel_case *)
+            casex (wr_to_bram_fsm)
 
                 s0 : begin
                     qwords_on_tlp <= trn_rd[41:33];
@@ -942,10 +918,6 @@ module tx_wr_pkt_to_bram (
                             wr_to_bram_fsm <= s0;
                         end
                     end
-                end
-
-                default : begin //other TLPs
-                    wr_to_bram_fsm <= s0;
                 end
 
             endcase

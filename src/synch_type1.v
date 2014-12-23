@@ -62,20 +62,19 @@ module synch_type1 #(
     );
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     //-------------------------------------------------------
     // Local a
     //-------------------------------------------------------
-    reg     [7:0]    fsm_a;
+    reg     [7:0]    fsm_a = s0;
     reg     [W:0]    bus_in_last;
     reg              synch;
     reg     [W:0]    cross;
@@ -98,7 +97,8 @@ module synch_type1 #(
         
         else begin  // not reset
 
-            case (fsm_a)
+            (* parallel_case *)
+            casex (fsm_a)
 
                 s0 : begin
                     bus_in_last <= 'b0;
@@ -127,10 +127,6 @@ module synch_type1 #(
                 s5 : fsm_a <= s6;
                 s6 : fsm_a <= s7;
                 s7 : fsm_a <= s1;
-
-                default : begin 
-                    fsm_a <= s0;
-                end
 
             endcase
         end     // not reset

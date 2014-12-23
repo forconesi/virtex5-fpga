@@ -53,27 +53,19 @@ module pcie_endpoint_reset (
     );
 
     // localparam
-    localparam s0  = 15'b000000000000000;
-    localparam s1  = 15'b000000000000001;
-    localparam s2  = 15'b000000000000010;
-    localparam s3  = 15'b000000000000100;
-    localparam s4  = 15'b000000000001000;
-    localparam s5  = 15'b000000000010000;
-    localparam s6  = 15'b000000000100000;
-    localparam s7  = 15'b000000001000000;
-    localparam s8  = 15'b000000010000000;
-    localparam s9  = 15'b000000100000000;
-    localparam s10 = 15'b000001000000000;
-    localparam s11 = 15'b000010000000000;
-    localparam s12 = 15'b000100000000000;
-    localparam s13 = 15'b001000000000000;
-    localparam s14 = 15'b010000000000000;
-    localparam s15 = 15'b100000000000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     //-------------------------------------------------------
     // Local reset
     //-------------------------------------------------------
-    reg     [14:0]   reset_fsm = 'b0;
+    reg     [7:0]    reset_fsm = s0;
 
     ////////////////////////////////////////////////
     // reset
@@ -86,7 +78,8 @@ module pcie_endpoint_reset (
         
         else begin  // not reset
 
-            case (reset_fsm)
+            (* parallel_case *)
+            casex (reset_fsm)
 
                 s0 : begin
                     reset250 <= 1'b1;
@@ -113,10 +106,6 @@ module pcie_endpoint_reset (
                     if (trn_lnk_up_n) begin
                         reset_fsm <= s0;
                     end
-                end
-
-                default : begin 
-                    reset_fsm <= s0;
                 end
 
             endcase

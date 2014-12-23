@@ -72,22 +72,22 @@ module tx_huge_pages_addr (
     );
 
     // localparam
-    localparam s0  = 10'b0000000000;
-    localparam s1  = 10'b0000000001;
-    localparam s2  = 10'b0000000010;
-    localparam s3  = 10'b0000000100;
-    localparam s4  = 10'b0000001000;
-    localparam s5  = 10'b0000010000;
-    localparam s6  = 10'b0000100000;
-    localparam s7  = 10'b0001000000;
-    localparam s8  = 10'b0010000000;
-    localparam s9  = 10'b0100000000;
-    localparam s10 = 10'b1000000000;
+    localparam s0  = 11'b00000000001;
+    localparam s1  = 11'b00000000010;
+    localparam s2  = 11'b00000000100;
+    localparam s3  = 11'b00000001000;
+    localparam s4  = 11'b00000010000;
+    localparam s5  = 11'b00000100000;
+    localparam s6  = 11'b00001000000;
+    localparam s7  = 11'b00010000000;
+    localparam s8  = 11'b00100000000;
+    localparam s9  = 11'b01000000000;
+    localparam s10 = 11'b10000000000;
 
     //-------------------------------------------------------
     // Local TLP reception
     //-------------------------------------------------------
-    reg     [9:0]   tlp_rx_fsm;
+    reg     [10:0]  tlp_rx_fsm = s0;
     reg             huge_page_unlock_1;
     reg             huge_page_unlock_2;
     reg     [31:0]  aux_dw;
@@ -151,7 +151,8 @@ module tx_huge_pages_addr (
             huge_page_addr_2 <= huge_page_addr_2_i;
             completed_buffer_address <= completed_buffer_address_i;
 
-            case (tlp_rx_fsm)
+            (* parallel_case *)
+            casex (tlp_rx_fsm)
 
                 s0 : begin
                     if ( (!trn_rsrc_rdy_n) && (!trn_rsof_n) && (!trn_rdst_rdy_n) && (!trn_rbar_hit_n[2])) begin
@@ -167,6 +168,7 @@ module tx_huge_pages_addr (
                 s1 : begin
                     aux_dw <= trn_rd[31:0];
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        (* parallel_case *)
                         case (trn_rd[39:34])
 
                             6'b100000 : begin     // huge page address
@@ -246,6 +248,7 @@ module tx_huge_pages_addr (
 
                 s5 : begin
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        (* parallel_case *)
                         case (trn_rd[7:2])
 
                             6'b100000 : begin     // huge page address
@@ -335,10 +338,6 @@ module tx_huge_pages_addr (
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
                         tlp_rx_fsm <= s0;
                     end
-                end
-
-                default : begin //other TLPs
-                    tlp_rx_fsm <= s0;
                 end
 
             endcase

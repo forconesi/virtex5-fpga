@@ -63,20 +63,19 @@ module hw_sw_synch (
     parameter BARMAPPING = 0;
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     //-------------------------------------------------------
     // Local rcv host_pointer
     //-------------------------------------------------------
-    reg     [7:0]      host_last_seen_fsm;
+    reg     [7:0]      host_last_seen_fsm = s0;
     reg     [31:0]     aux_dw;
     reg     [63:0]     host_pointer;
 
@@ -93,7 +92,8 @@ module hw_sw_synch (
 
             sw_pointer <= host_pointer;
 
-            case (host_last_seen_fsm)
+            (* parallel_case *)
+            casex (host_last_seen_fsm)
 
                 s0 : begin
                     if ( (!trn_rsrc_rdy_n) && (!trn_rsof_n) && (!trn_rdst_rdy_n) && (!trn_rbar_hit_n[2])) begin
@@ -165,10 +165,6 @@ module hw_sw_synch (
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
                         host_last_seen_fsm <= s0;
                     end
-                end
-
-                default : begin //other TLPs
-                    host_last_seen_fsm <= s0;
                 end
 
             endcase

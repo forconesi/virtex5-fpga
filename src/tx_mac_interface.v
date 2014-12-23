@@ -70,20 +70,19 @@ module tx_mac_interface (
     );
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     //-------------------------------------------------------
     // Local trigger_eth_frame
     //-------------------------------------------------------
-    reg     [7:0]     trigger_frame_fsm;
+    reg     [7:0]     trigger_frame_fsm = s0;
     reg     [31:0]    byte_counter;
     reg     [9:0]     qwords_in_eth;
     reg     [9:0]     diff;
@@ -95,7 +94,7 @@ module tx_mac_interface (
     //-------------------------------------------------------
     // Local ethernet frame transmition and memory read
     //-------------------------------------------------------
-    reg     [7:0]     tx_frame_fsm;
+    reg     [7:0]     tx_frame_fsm = s0;
     reg     [9:0]     qwords_sent;
     reg               synch;
     reg     [9:0]     next_rd_addr;
@@ -137,7 +136,8 @@ module tx_mac_interface (
             
             diff <= commited_wr_addr + (~rd_addr_i) +1;
             
-            case (trigger_frame_fsm)
+            (* parallel_case *)
+            casex (trigger_frame_fsm)
 
                 s0 : begin
                     byte_counter <= rd_data[63:32];
@@ -152,6 +152,7 @@ module tx_mac_interface (
                         qwords_in_eth <= byte_counter[12:3] +1;
                     end
 
+                    (* parallel_case *)
                     case (byte_counter[2:0])                    // my deco
                         3'b000 : begin
                             last_tx_data_valid <= 8'b11111111;
@@ -198,10 +199,6 @@ module tx_mac_interface (
                         qwords_in_eth <= rd_data[44:35];
                         trigger_frame_fsm <= s1;
                     end
-                end
-
-                default : begin 
-                    trigger_frame_fsm <= s0;
                 end
 
             endcase
@@ -254,7 +251,8 @@ module tx_mac_interface (
 // INSTRUMENTATION
 ////////////////////////////////////////////////
 
-            case (tx_frame_fsm)
+            (* parallel_case *)
+            casex (tx_frame_fsm)
 
                 s0: begin
                     next_rd_addr <= rd_addr_i +1;
@@ -326,12 +324,7 @@ module tx_mac_interface (
                     tx_frame_fsm <= s0;
                 end
 
-                default : begin 
-                    tx_frame_fsm <= s0;
-                end
-
             endcase
-
         end     // not reset
     end  //always
 

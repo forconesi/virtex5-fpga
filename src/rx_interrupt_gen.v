@@ -58,22 +58,21 @@ module rx_interrupt_gen (
     );
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     // Local wires and reg
 
     //-------------------------------------------------------
     // Local interrupts_gen
     //-------------------------------------------------------  
-    reg     [7:0]   interrupt_gen_fsm;
+    reg     [7:0]   interrupt_gen_fsm = s0;
     reg             rx_activity_reg0;
     reg             rx_activity_reg1;
 
@@ -94,7 +93,8 @@ module rx_interrupt_gen (
             rx_activity_reg0 <= rx_activity;
             rx_activity_reg1 <= rx_activity_reg0;
 
-            case (interrupt_gen_fsm)
+            (* parallel_case *)
+            casex (interrupt_gen_fsm)
 
                 s0 : begin
                     if (huge_page_status_1 || huge_page_status_2) begin
@@ -116,10 +116,6 @@ module rx_interrupt_gen (
                     else begin
                         send_interrupt <= 1'b0;
                     end
-                end
-
-                default : begin
-                    interrupt_gen_fsm <= s0;
                 end
 
             endcase

@@ -77,20 +77,19 @@ module rx_mac_interface (
     );
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     //-------------------------------------------------------
     // Local ethernet frame reception and memory write
     //-------------------------------------------------------
-    reg     [7:0]     rx_fsm;
+    reg     [7:0]     rx_fsm = s0;
     reg     [15:0]    byte_counter;
     reg     [`BF:0]   aux_wr_addr;
     reg     [`BF:0]   diff;
@@ -107,7 +106,7 @@ module rx_mac_interface (
     //-------------------------------------------------------
     // Local ts_sec-and-ts_nsec-generation
     //-------------------------------------------------------
-    reg     [7:0]    time_fsm;
+    reg     [7:0]    time_fsm = s0;
     reg     [31:0]   ts_sec;
     reg     [31:0]   ts_nsec;
     reg     [27:0]   free_running;
@@ -128,7 +127,8 @@ module rx_mac_interface (
             timestamp_en_synch0 <= timestamp_en;
             timestamp_en_synch1 <= timestamp_en_synch0;
 
-            case (time_fsm)
+            (* parallel_case *)
+            casex (time_fsm)
 
                 s0 : begin
                     free_running <= 'b0;
@@ -158,12 +158,7 @@ module rx_mac_interface (
                     end
                 end
 
-                default : begin 
-                    time_fsm <= s0;
-                end
-
             endcase
-
         end     // not reset
     end  //always
 
@@ -184,7 +179,8 @@ module rx_mac_interface (
             diff <= aux_wr_addr + (~commited_rd_addr) +1;
             rx_activity <= 1'b0;
 
-            case (rx_fsm)
+            (* parallel_case *)
+            casex (rx_fsm)
 
                 s0 : begin                                  // configure mac core to present preamble and save the packet timestamp while its reception
                     byte_counter <= 'b0;
@@ -206,6 +202,7 @@ module rx_mac_interface (
                     rx_good_frame_reg <= rx_good_frame;
                     rx_bad_frame_reg <= rx_bad_frame;
                     
+                    (* parallel_case *)
                     case (rx_data_valid)     // increment byte_counter accordingly
                         8'b00000000 : begin
                             byte_counter <= byte_counter;       // don't increment
@@ -272,10 +269,6 @@ module rx_mac_interface (
                         dropped_pkts <= dropped_pkts +1; 
                         rx_fsm <= s0;
                     end
-                end
-
-                default : begin 
-                    rx_fsm <= s0;
                 end
 
             endcase

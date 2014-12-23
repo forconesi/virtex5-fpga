@@ -37,7 +37,7 @@
 *        http://www.gnu.org/licenses/.
 *
 */
-`define INSTRUMENTATION 1
+//`define INSTRUMENTATION 1
 
 `define CPL_W_DATA_FMT_TYPE 7'b10_01010
 `define SC                  3'b000

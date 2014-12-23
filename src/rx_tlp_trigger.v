@@ -67,25 +67,25 @@ module rx_tlp_trigger (
     );
 
     // localparam
-    localparam s0  = 18'b000000000000000000;
-    localparam s1  = 18'b000000000000000001;
-    localparam s2  = 18'b000000000000000010;
-    localparam s3  = 18'b000000000000000100;
-    localparam s4  = 18'b000000000000001000;
-    localparam s5  = 18'b000000000000010000;
-    localparam s6  = 18'b000000000000100000;
-    localparam s7  = 18'b000000000001000000;
-    localparam s8  = 18'b000000000010000000;
-    localparam s9  = 18'b000000000100000000;
-    localparam s10 = 18'b000000001000000000;
-    localparam s11 = 18'b000000010000000000;
-    localparam s12 = 18'b000000100000000000;
-    localparam s13 = 18'b000001000000000000;
-    localparam s14 = 18'b000010000000000000;
-    localparam s15 = 18'b000100000000000000;
-    localparam s16 = 18'b001000000000000000;
-    localparam s17 = 18'b010000000000000000;
-    localparam s18 = 18'b100000000000000000;
+    localparam s0  = 19'b0000000000000000001;
+    localparam s1  = 19'b0000000000000000010;
+    localparam s2  = 19'b0000000000000000100;
+    localparam s3  = 19'b0000000000000001000;
+    localparam s4  = 19'b0000000000000010000;
+    localparam s5  = 19'b0000000000000100000;
+    localparam s6  = 19'b0000000000001000000;
+    localparam s7  = 19'b0000000000010000000;
+    localparam s8  = 19'b0000000000100000000;
+    localparam s9  = 19'b0000000001000000000;
+    localparam s10 = 19'b0000000010000000000;
+    localparam s11 = 19'b0000000100000000000;
+    localparam s12 = 19'b0000001000000000000;
+    localparam s13 = 19'b0000010000000000000;
+    localparam s14 = 19'b0000100000000000000;
+    localparam s15 = 19'b0001000000000000000;
+    localparam s16 = 19'b0010000000000000000;
+    localparam s17 = 19'b0100000000000000000;
+    localparam s18 = 19'b1000000000000000000;
 
     //-------------------------------------------------------
     // Local timeout-generation
@@ -98,7 +98,7 @@ module rx_tlp_trigger (
     //-------------------------------------------------------
     // Local trigger-logic
     //-------------------------------------------------------
-    reg     [17:0]       trigger_fsm;
+    reg     [17:0]       trigger_fsm = s0;
     reg     [`BF:0]      diff;
     reg     [`BF:0]      diff_reg;
     reg     [`BF:0]      commited_rd_addr;
@@ -174,7 +174,8 @@ module rx_tlp_trigger (
             aux_max_tlp_size256 <= | cfg_max_payload_size_reg;
             max_tlp_size256 <= aux_max_tlp_size256;
             
-            case (trigger_fsm)
+            (* parallel_case *)
+            casex (trigger_fsm)
 
                 s0 : begin
                     rx_idle <= 1'b1;
@@ -382,7 +383,6 @@ module rx_tlp_trigger (
                 end
 
             endcase
-
         end     // not reset
     end  //always
 

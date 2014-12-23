@@ -63,20 +63,19 @@ module enpoint_arbitration (
     );
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     //-------------------------------------------------------
     // Local send_tlps_machine
     //-------------------------------------------------------   
-    reg     [7:0]   fsm;
+    reg     [7:0]   fsm = s0;
     reg             turn_bit;
 
     ////////////////////////////////////////////////
@@ -94,7 +93,8 @@ module enpoint_arbitration (
         
         else begin  // not reset
 
-            case (fsm)
+            (* parallel_case *)
+            casex (fsm)
 
                 s0 : begin
                     if ( (!rx_driven) && (!tx_driven) && (!intctrl_driven) ) begin
@@ -129,10 +129,6 @@ module enpoint_arbitration (
 
                 s3 : begin
                     intctrl_turn <= 1'b0;
-                    fsm <= s0;
-                end
-
-                default : begin 
                     fsm <= s0;
                 end
 

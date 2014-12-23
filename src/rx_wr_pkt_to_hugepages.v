@@ -92,49 +92,49 @@ module rx_wr_pkt_to_hugepages (
     );
 
     // localparam
-    localparam s0  = 28'b0000000000000000000000000000;
-    localparam s1  = 28'b0000000000000000000000000001;
-    localparam s2  = 28'b0000000000000000000000000010;
-    localparam s3  = 28'b0000000000000000000000000100;
-    localparam s4  = 28'b0000000000000000000000001000;
-    localparam s5  = 28'b0000000000000000000000010000;
-    localparam s6  = 28'b0000000000000000000000100000;
-    localparam s7  = 28'b0000000000000000000001000000;
-    localparam s8  = 28'b0000000000000000000010000000;
-    localparam s9  = 28'b0000000000000000000100000000;
-    localparam s10 = 28'b0000000000000000001000000000;
-    localparam s11 = 28'b0000000000000000010000000000;
-    localparam s12 = 28'b0000000000000000100000000000;
-    localparam s13 = 28'b0000000000000001000000000000;
-    localparam s14 = 28'b0000000000000010000000000000;
-    localparam s15 = 28'b0000000000000100000000000000;
-    localparam s16 = 28'b0000000000001000000000000000;
-    localparam s17 = 28'b0000000000010000000000000000;
-    localparam s18 = 28'b0000000000100000000000000000;
-    localparam s19 = 28'b0000000001000000000000000000;
-    localparam s20 = 28'b0000000010000000000000000000;
-    localparam s21 = 28'b0000000100000000000000000000;
-    localparam s22 = 28'b0000001000000000000000000000;
-    localparam s23 = 28'b0000010000000000000000000000;
-    localparam s24 = 28'b0000100000000000000000000000;
-    localparam s25 = 28'b0001000000000000000000000000;
-    localparam s26 = 28'b0010000000000000000000000000;
-    localparam s27 = 28'b0100000000000000000000000000;
-    localparam s28 = 28'b1000000000000000000000000000;
+    localparam s0  = 29'b00000000000000000000000000001;
+    localparam s1  = 29'b00000000000000000000000000010;
+    localparam s2  = 29'b00000000000000000000000000100;
+    localparam s3  = 29'b00000000000000000000000001000;
+    localparam s4  = 29'b00000000000000000000000010000;
+    localparam s5  = 29'b00000000000000000000000100000;
+    localparam s6  = 29'b00000000000000000000001000000;
+    localparam s7  = 29'b00000000000000000000010000000;
+    localparam s8  = 29'b00000000000000000000100000000;
+    localparam s9  = 29'b00000000000000000001000000000;
+    localparam s10 = 29'b00000000000000000010000000000;
+    localparam s11 = 29'b00000000000000000100000000000;
+    localparam s12 = 29'b00000000000000001000000000000;
+    localparam s13 = 29'b00000000000000010000000000000;
+    localparam s14 = 29'b00000000000000100000000000000;
+    localparam s15 = 29'b00000000000001000000000000000;
+    localparam s16 = 29'b00000000000010000000000000000;
+    localparam s17 = 29'b00000000000100000000000000000;
+    localparam s18 = 29'b00000000001000000000000000000;
+    localparam s19 = 29'b00000000010000000000000000000;
+    localparam s20 = 29'b00000000100000000000000000000;
+    localparam s21 = 29'b00000001000000000000000000000;
+    localparam s22 = 29'b00000010000000000000000000000;
+    localparam s23 = 29'b00000100000000000000000000000;
+    localparam s24 = 29'b00001000000000000000000000000;
+    localparam s25 = 29'b00010000000000000000000000000;
+    localparam s26 = 29'b00100000000000000000000000000;
+    localparam s27 = 29'b01000000000000000000000000000;
+    localparam s28 = 29'b10000000000000000000000000000;
 
     //-------------------------------------------------------
     // Local current_huge_page_addr
     //-------------------------------------------------------
     reg     [63:0]      current_huge_page_addr;
-    reg     [27:0]      give_huge_page_fsm;
-    reg     [27:0]      free_huge_page_fsm;
+    reg     [28:0]      give_huge_page_fsm = s0;
+    reg     [28:0]      free_huge_page_fsm = s0;
     reg                 huge_page_available;
     reg                 aux_high_mem;
 
     //-------------------------------------------------------
     // Local send_tlps_machine
     //-------------------------------------------------------   
-    reg     [27:0]      send_fsm;
+    reg     [28:0]      send_fsm = s0;
     reg                 return_huge_page_to_host;
     reg     [8:0]       tlp_qword_counter;
     reg     [4:0]       tlp_number;
@@ -169,7 +169,8 @@ module rx_wr_pkt_to_hugepages (
 
         else begin  // not reset
 
-            case (free_huge_page_fsm)
+            (* parallel_case *)
+            casex (free_huge_page_fsm)
                 s0 : begin
                     if (return_huge_page_to_host) begin
                         huge_page_free_1 <= 1'b1;
@@ -192,7 +193,8 @@ module rx_wr_pkt_to_hugepages (
                 end
             endcase
 
-            case (give_huge_page_fsm)
+            (* parallel_case *)
+            casex (give_huge_page_fsm)
                 s0 : begin
                     if (huge_page_status_1) begin
                         huge_page_available <= 1'b1;
@@ -268,7 +270,8 @@ module rx_wr_pkt_to_hugepages (
 
             rx_dropped_pkts_reg <= rx_dropped_pkts;
 
-            case (send_fsm)
+            (* parallel_case *)
+            casex (send_fsm)
 
                 s0 : begin
                     driving_interface <= 1'b0;
@@ -716,10 +719,6 @@ module rx_wr_pkt_to_hugepages (
                             send_fsm <= s14;
                         end
                     end
-                end
-
-                default : begin 
-                    send_fsm <= s0;
                 end
 
             endcase

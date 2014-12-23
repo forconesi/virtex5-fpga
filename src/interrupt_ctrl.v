@@ -71,36 +71,34 @@ module interrupt_ctrl (
     );
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     //-------------------------------------------------------
     // Local TLP reception
     //-------------------------------------------------------
-    reg     [7:0]   tlp_rx_fsm;
+    reg     [7:0]   tlp_rx_fsm = s0;
     reg             interrupts_reenabled;
     reg             interrupts_disable;
     reg             period_received;
     reg     [31:0]  aux_dw;
-    
 
     //-------------------------------------------------------
     // Local send_interrupt_fsm
     //-------------------------------------------------------
-    reg     [7:0]   send_interrupt_fsm;
+    reg     [7:0]   send_interrupt_fsm = s0;
     reg     [29:0]  counter;
 
     //-------------------------------------------------------
     // Local interrupt_period_fsm
     //-------------------------------------------------------
-    reg     [7:0]   interrupt_period_fsm;
+    reg     [7:0]   interrupt_period_fsm = s0;
     reg     [31:0]  aux_period;
     reg     [29:0]  interrupt_period;
 
@@ -118,7 +116,8 @@ module interrupt_ctrl (
         
         else begin  // not reset
 
-            case (send_interrupt_fsm)
+            (* parallel_case *)
+            casex (send_interrupt_fsm)
 
                 s0 : begin
                     if (send_interrupt && !interrupts_disable) begin
@@ -175,10 +174,6 @@ module interrupt_ctrl (
                     end
                 end
 
-                default : begin
-                    send_interrupt_fsm <= s0;
-                end
-
             endcase
         end     // not reset
     end  //always
@@ -194,7 +189,8 @@ module interrupt_ctrl (
         
         else begin  // not reset
 
-            case (interrupt_period_fsm)
+            (* parallel_case *)
+            casex (interrupt_period_fsm)
 
                 s0 : begin
                     interrupt_period <= 'b0;
@@ -214,10 +210,6 @@ module interrupt_ctrl (
                 s2 : begin
                     interrupt_period <= aux_period[31:2];
                     interrupt_period_fsm <= s1;
-                end
-
-                default : begin
-                    interrupt_period_fsm <= s0;
                 end
 
             endcase
@@ -241,7 +233,8 @@ module interrupt_ctrl (
             interrupts_reenabled <= 1'b0;
             period_received <= 1'b0;
 
-            case (tlp_rx_fsm)
+            (* parallel_case *)
+            casex (tlp_rx_fsm)
 
                 s0 : begin
                     if ( (!trn_rsrc_rdy_n) && (!trn_rsof_n) && (!trn_rdst_rdy_n) && (!trn_rbar_hit_n[2])) begin
@@ -257,6 +250,7 @@ module interrupt_ctrl (
                 s1 : begin
                     aux_dw <= trn_rd[31:0];
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        (* parallel_case *)
                         case (trn_rd[39:34])
 
                             6'b001000 : begin     // host going to sleep
@@ -285,6 +279,7 @@ module interrupt_ctrl (
 
                 s2 : begin
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        (* parallel_case *)
                         case (trn_rd[7:2])
 
                             6'b001000 : begin     // host going to sleep
@@ -316,10 +311,6 @@ module interrupt_ctrl (
                         period_received <= 1'b1;
                         tlp_rx_fsm <= s0;
                     end
-                end
-
-                default : begin //other TLPs
-                    tlp_rx_fsm <= s0;
                 end
 
             endcase

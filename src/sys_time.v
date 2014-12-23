@@ -63,19 +63,18 @@ module sys_time (
     );
 
     // localparam
-    localparam s0 = 8'b00000000;
-    localparam s1 = 8'b00000001;
-    localparam s2 = 8'b00000010;
-    localparam s3 = 8'b00000100;
-    localparam s4 = 8'b00001000;
-    localparam s5 = 8'b00010000;
-    localparam s6 = 8'b00100000;
-    localparam s7 = 8'b01000000;
-    localparam s8 = 8'b10000000;
+    localparam s0 = 8'b00000001;
+    localparam s1 = 8'b00000010;
+    localparam s2 = 8'b00000100;
+    localparam s3 = 8'b00001000;
+    localparam s4 = 8'b00010000;
+    localparam s5 = 8'b00100000;
+    localparam s6 = 8'b01000000;
+    localparam s7 = 8'b10000000;
 
     // Local wires and reg
 
-    reg     [7:0]   state;
+    reg     [7:0]   state = s0;
     reg     [7:0]   nsecs_fsm;
     reg     [7:0]   secs_fsm;
     reg             nsecs_received;
@@ -105,7 +104,8 @@ module sys_time (
                 rx_timestamp_en <= 1'b0;
             end
 
-            case (nsecs_fsm)
+            (* parallel_case *)
+            casex (nsecs_fsm)
                 s0 : begin
                     aux_nsecs[7:0]   <= aux_dw[31:24];
                     aux_nsecs[15:8]  <= aux_dw[23:16];
@@ -121,7 +121,8 @@ module sys_time (
                 end
             endcase
 
-            case (secs_fsm)
+            (* parallel_case *)
+            casex (secs_fsm)
                 s0 : begin
                     aux_secs[7:0]   <= aux_dw[31:24];
                     aux_secs[15:8]  <= aux_dw[23:16];
@@ -161,7 +162,8 @@ module sys_time (
             rx_timestamp_en_i <= 1'b0;
             rx_timestamp_not_en_i <= 1'b0;
 
-            case (state)
+            (* parallel_case *)
+            casex (state)
 
                 s0 : begin
                     if ( (!trn_rsrc_rdy_n) && (!trn_rsof_n) && (!trn_rdst_rdy_n) && (!trn_rbar_hit_n[0])) begin
@@ -177,6 +179,7 @@ module sys_time (
                 s1 : begin
                     aux_dw <= trn_rd[31:0];
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        (* parallel_case *)
                         case (trn_rd[37:34])
 
                             4'b1000 : begin     // nanosecs
@@ -209,6 +212,7 @@ module sys_time (
 
                 s2 : begin
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        (* parallel_case *)
                         case (trn_rd[5:2])
 
                             4'b1000 : begin     // nanosecs
@@ -239,22 +243,18 @@ module sys_time (
 
                 s3 : begin
                     aux_dw <= trn_rd[63:32];
-                    nsecs_received <= 1'b1;
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        nsecs_received <= 1'b1;
                         state <= s0;
                     end
                 end
 
                 s4 : begin
                     aux_dw <= trn_rd[63:32];
-                    secs_received <= 1'b1;
                     if ( (!trn_rsrc_rdy_n) && (!trn_rdst_rdy_n)) begin
+                        secs_received <= 1'b1;
                         state <= s0;
                     end
-                end
-
-                default : begin //other TLPs
-                    state <= s0;
                 end
 
             endcase

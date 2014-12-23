@@ -88,27 +88,26 @@ module tx_rd_host_mem (
     parameter NUMB_HP = 2;      // = 2^something
     
     // localparam
-    localparam s0  = 15'b000000000000000;
-    localparam s1  = 15'b000000000000001;
-    localparam s2  = 15'b000000000000010;
-    localparam s3  = 15'b000000000000100;
-    localparam s4  = 15'b000000000001000;
-    localparam s5  = 15'b000000000010000;
-    localparam s6  = 15'b000000000100000;
-    localparam s7  = 15'b000000001000000;
-    localparam s8  = 15'b000000010000000;
-    localparam s9  = 15'b000000100000000;
-    localparam s10 = 15'b000001000000000;
-    localparam s11 = 15'b000010000000000;
-    localparam s12 = 15'b000100000000000;
-    localparam s13 = 15'b001000000000000;
-    localparam s14 = 15'b010000000000000;
-    localparam s15 = 15'b100000000000000;
+    localparam s0  = 15'b000000000000001;
+    localparam s1  = 15'b000000000000010;
+    localparam s2  = 15'b000000000000100;
+    localparam s3  = 15'b000000000001000;
+    localparam s4  = 15'b000000000010000;
+    localparam s5  = 15'b000000000100000;
+    localparam s6  = 15'b000000001000000;
+    localparam s7  = 15'b000000010000000;
+    localparam s8  = 15'b000000100000000;
+    localparam s9  = 15'b000001000000000;
+    localparam s10 = 15'b000010000000000;
+    localparam s11 = 15'b000100000000000;
+    localparam s12 = 15'b001000000000000;
+    localparam s13 = 15'b010000000000000;
+    localparam s14 = 15'b100000000000000;
 
     //-------------------------------------------------------
     // Local send_tlps_machine
     //-------------------------------------------------------   
-    reg     [14:0]  rd_host_fsm;
+    reg     [14:0]  rd_host_fsm = s0;
     reg     [63:0]  host_mem_addr;
     reg     [63:0]  next_completed_buffer_address;
     reg     [63:0]  last_completed_buffer_address;
@@ -146,7 +145,8 @@ module tx_rd_host_mem (
             notify_ack <= 1'b0;
             next_huge_page_index <= (huge_page_index + 1) & (~NUMB_HP);
 
-            case (rd_host_fsm)
+            (* parallel_case *)
+            casex (rd_host_fsm)
 
                 s0 : begin
                     trn_td <= 64'b0;
@@ -377,10 +377,6 @@ module tx_rd_host_mem (
                         trn_teof_n <= 1'b0;
                         rd_host_fsm <= s4;
                     end
-                end
-
-                default : begin 
-                    rd_host_fsm <= s0;
                 end
 
             endcase

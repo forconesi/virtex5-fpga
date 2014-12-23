@@ -77,27 +77,22 @@ module mdio_host_interface (
     );
 
     // localparam
-    localparam s0  = 15'b000000000000000;
-    localparam s1  = 15'b000000000000001;
-    localparam s2  = 15'b000000000000010;
-    localparam s3  = 15'b000000000000100;
-    localparam s4  = 15'b000000000001000;
-    localparam s5  = 15'b000000000010000;
-    localparam s6  = 15'b000000000100000;
-    localparam s7  = 15'b000000001000000;
-    localparam s8  = 15'b000000010000000;
-    localparam s9  = 15'b000000100000000;
-    localparam s10 = 15'b000001000000000;
-    localparam s11 = 15'b000010000000000;
-    localparam s12 = 15'b000100000000000;
-    localparam s13 = 15'b001000000000000;
-    localparam s14 = 15'b010000000000000;
-    localparam s15 = 15'b100000000000000;
+    localparam s0  = 11'b00000000001;
+    localparam s1  = 11'b00000000010;
+    localparam s2  = 11'b00000000100;
+    localparam s3  = 11'b00000001000;
+    localparam s4  = 11'b00000010000;
+    localparam s5  = 11'b00000100000;
+    localparam s6  = 11'b00001000000;
+    localparam s7  = 11'b00010000000;
+    localparam s8  = 11'b00100000000;
+    localparam s9  = 11'b01000000000;
+    localparam s10 = 11'b10000000000;
 
     //-------------------------------------------------------
     // Local host_conf_driver
     //-------------------------------------------------------
-    reg     [14:0]  host_int_fsm;
+    reg     [10:0]  host_int_fsm = s0;
     reg             mdio_access_reg0;
     reg             mdio_access_reg1;
     reg     [31:0]  host_data_in_reg;
@@ -109,13 +104,13 @@ module mdio_host_interface (
     //-------------------------------------------------------
     // Local generate_interrupt
     //-------------------------------------------------------
-    reg     [14:0]  interrupt_fsm;
+    reg     [10:0]  interrupt_fsm = s0;
     reg             generate_interrupt_50mhz_reg;
 
     //-------------------------------------------------------
     // Local mdio_access from pcie
     //-------------------------------------------------------
-    reg     [14:0]  tlp_rx_fsm;
+    reg     [10:0]  tlp_rx_fsm = s0;
     reg             mdio_access;
     reg     [31:0]  host_data_in;
     reg     [3:0]   mdio_access_counter;
@@ -140,7 +135,8 @@ module mdio_host_interface (
             reset156_25_reg0 <= reset156_25;
             reset156_25_reg1 <= reset156_25_reg0;
 
-            case (host_int_fsm)
+            (* parallel_case *)
+            casex (host_int_fsm)
 
                 s0 : begin
                     host_opcode <= 2'b11;
@@ -261,15 +257,10 @@ module mdio_host_interface (
                     end
                 end
 
-                default : begin
-                    host_int_fsm <= s0;
-                end
-
             endcase
         end     // not reset
     end  //always
 
-    
     ////////////////////////////////////////////////
     // generate_interrupt
     ////////////////////////////////////////////////
@@ -285,7 +276,8 @@ module mdio_host_interface (
 
             generate_interrupt_50mhz_reg <= generate_interrupt_50mhz;           // one pulse of this signal will last for 5 250MHz ticks. avoid re-trigger
 
-            case (interrupt_fsm)
+            (* parallel_case *)
+            casex (interrupt_fsm)
 
                 s0 : begin
                     if (generate_interrupt_50mhz_reg) begin
@@ -307,10 +299,6 @@ module mdio_host_interface (
                     end
                 end
 
-                default : begin 
-                    interrupt_fsm <= s0;
-                end
-
             endcase
         end     // not reset
     end  //always
@@ -328,7 +316,8 @@ module mdio_host_interface (
         
         else begin  // not reset
             
-            case (tlp_rx_fsm)
+            (* parallel_case *)
+            casex (tlp_rx_fsm)
 
                 s0 : begin
                     mdio_access_counter <= 4'b0;
@@ -391,10 +380,6 @@ module mdio_host_interface (
                         mdio_access <= 1'b0;
                         tlp_rx_fsm <= s0;
                     end
-                end
-
-                default : begin //other TLPs
-                    tlp_rx_fsm <= s0;
                 end
 
             endcase
