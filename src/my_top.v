@@ -474,7 +474,7 @@ module my_top (
     //-------------------------------------------------------
     // internal_true_dual_port_ram rx
     //-------------------------------------------------------
-    rx_buff #(.AW(10), .DW(64)) rx_buffer_mod (
+    rx_buff_non_splited #(.AW(9), .DW(64)) rx_buffer_mod (
         .a(rx_wr_addr),                                        // I [`BF:0]
         .d(rx_wr_data),                                        // I [63:0]
         .dpra(rx_rd_addr),                                     // I [`BF:0]
