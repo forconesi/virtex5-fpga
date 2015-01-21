@@ -320,6 +320,7 @@ module rx # (
     // sw_wrbck
     //-------------------------------------------------------
     sw_wrbck #(
+        .BARHIT(BARHIT),
         .BARMP(BARMP_WRBCK)
     ) sw_wrbck_mod (
         .clk(pcie_clk),                                        // I
@@ -332,6 +333,24 @@ module rx # (
         .trn_rsrc_rdy_n(trn_rsrc_rdy_n),                       // I
         .trn_rbar_hit_n(trn_rbar_hit_n),                       // I [6:0]
         .sw_ptr(sw_ptr)                                        // O [63:0]
+        );
+
+    //-------------------------------------------------------
+    // sw_lost_sync
+    //-------------------------------------------------------
+    sw_lost_sync #(
+        .BARHIT(BARHIT),
+        .BARMP(6'b000010)
+    ) sw_lost_sync_mod (
+        .clk(pcie_clk),                                        // I
+        .rst(pcie_rst),                                        // I
+        // TRN rx
+        .trn_rd(trn_rd),                                       // I [63:0]
+        .trn_rrem_n(trn_rrem_n),                               // I [7:0]
+        .trn_rsof_n(trn_rsof_n),                               // I
+        .trn_reof_n(trn_reof_n),                               // I
+        .trn_rsrc_rdy_n(trn_rsrc_rdy_n),                       // I
+        .trn_rbar_hit_n(trn_rbar_hit_n)                        // I [6:0]
         );
 
     //-------------------------------------------------------
