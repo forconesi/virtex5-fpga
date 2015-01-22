@@ -154,7 +154,7 @@ module dma (
     wire         [2:0]       cfg_function_number_c;
     wire         [15:0]      cfg_status_c;
     wire         [15:0]      cfg_command_c;
-    wire         [15:0]      cfg_dstatus_c;
+    (* KEEP = "TRUE" *)wire         [15:0]      cfg_dstatus_c;
     wire         [15:0]      cfg_dcommand_c;
     wire         [15:0]      cfg_lstatus_c;
     wire         [15:0]      cfg_lcommand_c;
