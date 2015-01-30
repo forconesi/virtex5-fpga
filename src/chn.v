@@ -191,7 +191,7 @@ module chn # (
         .BARMP_LBUF2_EN(TX_BARMP_LBUF2_EN),
         .BARMP_WRBCK(TX_BARMP_WRBCK),
         // MISC
-        .BW(9),
+        .BW(10),
         // RQ_TAG_BASE
         .RQTB(RQTB),
         // Outstanding request width
