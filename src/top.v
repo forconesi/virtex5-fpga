@@ -313,8 +313,8 @@ module top (
         .s_axis_tlast(S_AXIS_TLAST_DMA),                       // I
         .s_axis_tready(S_AXIS_TREADY_DMA),                     // O
         // REGIF
-        .reg_int_clk(M_AXI_LITE_ACLK),                         // I
-        .reg_int_reset_n(M_AXI_LITE_ARESETN),                  // I
+        .reg_int_clk(clk50),                                   // I
+        .reg_int_reset_n(dcm_for_xaui_locked),                 // I
         .IP2Bus_MstRd_Req(IP2Bus_MstRd_Req),                   // O
         .IP2Bus_MstWr_Req(IP2Bus_MstWr_Req),                   // O
         .IP2Bus_Mst_Addr(IP2Bus_Mst_Addr),                     // O [31:0]
@@ -341,6 +341,79 @@ module top (
         .mac_host_req(mac_host_req),                           // O
         .mac_host_miim_rdy(mac_host_miim_rdy)                  // I
         );
+
+    wire [31:0] M_AXI_LITE_ARADDR;
+    wire [31:0] M_AXI_LITE_RDATA;
+    wire [1:0] M_AXI_LITE_RRESP;
+    wire [31:0] M_AXI_LITE_AWADDR;
+    wire [31:0] M_AXI_LITE_WDATA;
+    wire [3:0] M_AXI_LITE_WSTRB;
+    wire [1:0] M_AXI_LITE_BRESP;
+
+   axi_master_lite u_axi_m
+     (
+      .m_axi_lite_aclk(clk50),
+      .m_axi_lite_aresetn(dcm_for_xaui_locked),
+      .md_error(),
+      .m_axi_lite_araddr(M_AXI_LITE_ARADDR),
+      .m_axi_lite_arvalid(M_AXI_LITE_ARVALID),
+      .m_axi_lite_arready(M_AXI_LITE_ARREADY),
+      .m_axi_lite_arprot(),
+      .m_axi_lite_rdata(M_AXI_LITE_RDATA),
+      .m_axi_lite_rresp(M_AXI_LITE_RRESP),
+      .m_axi_lite_rvalid(M_AXI_LITE_RVALID),
+      .m_axi_lite_rready(M_AXI_LITE_RREADY),
+      .m_axi_lite_awaddr(M_AXI_LITE_AWADDR),
+      .m_axi_lite_awvalid(M_AXI_LITE_AWVALID),
+      .m_axi_lite_awready(M_AXI_LITE_AWREADY),
+      .m_axi_lite_awprot(),
+      .m_axi_lite_wdata(M_AXI_LITE_WDATA),
+      .m_axi_lite_wstrb(M_AXI_LITE_WSTRB),
+      .m_axi_lite_wvalid(M_AXI_LITE_WVALID),
+      .m_axi_lite_wready(M_AXI_LITE_WREADY),
+      .m_axi_lite_bresp(M_AXI_LITE_BRESP),
+      .m_axi_lite_bvalid(M_AXI_LITE_BVALID),
+      .m_axi_lite_bready(M_AXI_LITE_BREADY),      
+      .ip2bus_mstrd_req(IP2Bus_MstRd_Req),
+      .ip2bus_mstwr_req(IP2Bus_MstWr_Req),
+      .ip2bus_mst_addr(IP2Bus_Mst_Addr),
+      .ip2bus_mst_be(IP2Bus_Mst_BE),
+      .ip2bus_mst_lock(IP2Bus_Mst_Lock),
+      .ip2bus_mst_reset(IP2Bus_Mst_Reset),
+      .bus2ip_mst_cmdack(Bus2IP_Mst_CmdAck),
+      .bus2ip_mst_cmplt(Bus2IP_Mst_Cmplt),
+      .bus2ip_mst_error(Bus2IP_Mst_Error),
+      .bus2ip_mst_rearbitrate(Bus2IP_Mst_Rearbitrate),
+      .bus2ip_mst_cmd_timeout(Bus2IP_Mst_Timeout),
+      .bus2ip_mstrd_d(Bus2IP_MstRd_d),
+      .bus2ip_mstrd_src_rdy_n(Bus2IP_MstRd_src_rdy_n),
+      .ip2bus_mstwr_d(IP2Bus_MstWr_d),
+      .bus2ip_mstwr_dst_rdy_n(Bus2IP_MstWr_dst_rdy_n)
+      );
+
+
+   axi4_lite_regs_test u_axi_test
+     (
+      .ACLK(clk50),
+      .ARESETN(dcm_for_xaui_locked),
+      .AWADDR(M_AXI_LITE_AWADDR),
+      .AWVALID(M_AXI_LITE_AWVALID),
+      .AWREADY(M_AXI_LITE_AWREADY),
+      .WDATA(M_AXI_LITE_WDATA),
+      .WSTRB(M_AXI_LITE_WSTRB),
+      .WVALID(M_AXI_LITE_WVALID),
+      .WREADY(M_AXI_LITE_WREADY),
+      .BRESP(M_AXI_LITE_BRESP),
+      .BVALID(M_AXI_LITE_BVALID),
+      .BREADY(M_AXI_LITE_BREADY),
+      .ARADDR(M_AXI_LITE_ARADDR),
+      .ARVALID(M_AXI_LITE_ARVALID),
+      .ARREADY(M_AXI_LITE_ARREADY),
+      .RDATA(M_AXI_LITE_RDATA),
+      .RRESP(M_AXI_LITE_RRESP),
+      .RVALID(M_AXI_LITE_RVALID),
+      .RREADY(M_AXI_LITE_RREADY)
+      );
 
 endmodule // top
 
