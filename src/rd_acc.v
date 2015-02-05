@@ -95,6 +95,7 @@ module rd_acc # (
     reg                      acc_en_reg1;
     reg          [31:0]      acc_addr_reg;
     reg          [31:0]      acc_data_reg;
+    (* KEEP = "TRUE" *)reg          [31:0]      wait_counter_rdif;
     reg                      snd_resp_ack_reg0;
     reg                      snd_resp_ack_reg1;
     reg                      acc_nack;
@@ -175,10 +176,12 @@ module rd_acc # (
                 s5 : begin
                     resp[31:0] <= acc_data_reg;
                     resp[63:32] <= acc_nack ? NACK_CODE : ACK_CODE;
+                    wait_counter_rdif <= 'b0;
                     acc_fsm <= s6;
                 end
 
                 s6 : begin
+                    wait_counter_rdif <= wait_counter_rdif + 1;
                     snd_resp <= 1'b1;
                     acc_fsm <= s7;
                 end
